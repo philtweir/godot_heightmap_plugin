@@ -8,7 +8,7 @@ var _blur_buffer : Image
 
 
 func get_red_range(im: Image, rect: Rect2) -> Vector2:
-	rect = rect.clip(Rect2(0, 0, im.get_width(), im.get_height()))
+	rect = rect.intersection(Rect2(0, 0, im.get_width(), im.get_height()))
 	var min_x := int(rect.position.x)
 	var min_y := int(rect.position.y)
 	var max_x := min_x + int(rect.size.x)
@@ -33,7 +33,7 @@ func get_red_range(im: Image, rect: Rect2) -> Vector2:
 
 
 func get_red_sum(im: Image, rect: Rect2) -> float:
-	rect = rect.clip(Rect2(0, 0, im.get_width(), im.get_height()))
+	rect = rect.intersection(Rect2(0, 0, im.get_width(), im.get_height()))
 	var min_x := int(rect.position.x)
 	var min_y := int(rect.position.y)
 	var max_x := min_x + int(rect.size.x)
@@ -52,8 +52,7 @@ func get_red_sum(im: Image, rect: Rect2) -> float:
 	return sum
 
 
-func get_red_sum_weighted(im: Image, brush: Image, pos: Vector2, 
-	var factor: float) -> float:
+func get_red_sum_weighted(im: Image, brush: Image, pos: Vector2, factor: float) -> float:
 		
 	var min_x = int(pos.x)
 	var min_y = int(pos.y)
@@ -87,7 +86,7 @@ func get_red_sum_weighted(im: Image, brush: Image, pos: Vector2,
 	return sum
 
 
-func add_red_brush(im: Image, brush: Image, pos: Vector2, var factor: float):
+func add_red_brush(im: Image, brush: Image, pos: Vector2, factor: float):
 	var min_x = int(pos.x)
 	var min_y = int(pos.y)
 	var max_x = min_x + brush.get_width()
@@ -175,7 +174,7 @@ func lerp_color_brush(im: Image, brush: Image, pos: Vector2,
 			var bx = x - min_noclamp_x
 
 			var shape_value = brush.get_pixel(bx, by).r
-			var c = im.get_pixel(x, y).linear_interpolate(target_value, factor * shape_value)
+			var c = im.get_pixel(x, y).lerp(target_value, factor * shape_value)
 			im.set_pixel(x, y, c)
 
 	im.lock()
@@ -183,16 +182,16 @@ func lerp_color_brush(im: Image, brush: Image, pos: Vector2,
 
 
 func generate_gaussian_brush(im: Image) -> float:
-	var sum := 0.0
+	var sum: float = 0.0
 	var center := Vector2(im.get_width() / 2, im.get_height() / 2)
-	var radius := min(im.get_width(), im.get_height()) / 2.0
+	var radius: float = min(im.get_width(), im.get_height()) / 2.0
 
 	im.lock()
 
 	for y in im.get_height():
 		for x in im.get_width():
-			var d := Vector2(x, y).distance_to(center) / radius
-			var v := clamp(1.0 - d * d * d, 0.0, 1.0)
+			var d: float = Vector2(x, y).distance_to(center) / radius
+			var v: float = clamp(1.0 - d * d * d, 0.0, 1.0)
 			im.set_pixel(x, y, Color(v, v, v))
 			sum += v;
 
@@ -227,8 +226,8 @@ func blur_red_brush(im: Image, brush: Image, pos: Vector2, factor: float):
 	# Copy pixels to temporary buffer
 	for y in range(min_y, max_y):
 		for x in range(min_x, max_x):
-			var ix := clamp(x, 0, im_clamp_w)
-			var iy := clamp(y, 0, im_clamp_h)
+			var ix: int = clamp(x, 0, im_clamp_w)
+			var iy: int = clamp(y, 0, im_clamp_h)
 			var c = im.get_pixel(ix, iy)
 			buffer.set_pixel(x - min_x, y - min_y, c)
 	

@@ -1,4 +1,4 @@
-tool
+@tool
 
 # XYZ files are text files containing a list of 3D points.
 # They can be found in GIS software as an export format for heightmaps.
@@ -76,7 +76,7 @@ static func load_bounds(f: File) -> HT_XYZBounds:
 # Loads points into an image with existing dimensions and format.
 # `f` must be positionned at the beginning of the series of points.
 # If `bounds` is `null`, it will be computed.
-static func load_heightmap(f: File, dst_image: Image, bounds: HT_XYZBounds):
+static func load_heightmap(f: File, dst_image: Image, bounds_in: HT_XYZBounds):
 	# We are not going to read the entire file directly in memory, because it can be really big.
 	# Instead we'll parse it directly and the only thing we retain in memory is the heightmap.
 	# This can be really slow on big files. If we can assume the file is square and points
@@ -84,10 +84,13 @@ static func load_heightmap(f: File, dst_image: Image, bounds: HT_XYZBounds):
 	# parsing points from text really is the main bottleneck (40 seconds to load a 2000x2000 file!).
 	
 	# Bounds can be precalculated
-	if bounds == null:
+	var bounds: HT_XYZBounds
+	if bounds_in == null:
 		var file_begin := f.get_position()
 		bounds = load_bounds(f)
 		f.seek(file_begin)
+	else:
+		bounds = bounds_in
 	
 	# Put min coordinates on the GDScript stack so they are faster to access
 	var min_pos_x := bounds.min_x

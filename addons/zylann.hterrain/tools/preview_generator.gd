@@ -1,4 +1,4 @@
-tool
+@tool
 extends EditorResourcePreviewGenerator
 
 const HTerrainData = preload("../hterrain_data.gd")
@@ -32,11 +32,11 @@ func generate_from_path(path: String, size: Vector2) -> Texture:
 	return _generate(normals, size)
 
 
-func handles(type: String) -> bool:
+func _handles(type: String) -> bool:
 	return type == "Resource"
 
 
-static func _generate(normals: Image, size: Vector2) -> Texture:
+func _generate(normals: Resource, size: Vector2i) -> Texture2D:
 	var im := Image.new()
 	im.create(size.x, size.y, false, Image.FORMAT_RGB8)
 
@@ -56,7 +56,7 @@ static func _generate(normals: Image, size: Vector2) -> Texture:
 			var n := _decode_normal(normals.get_pixel(mx, my))
 
 			var ndot := -n.dot(light_dir)
-			var gs := clamp(0.5 * ndot + 0.5, 0.0, 1.0)
+			var gs: float = clamp(0.5 * ndot + 0.5, 0.0, 1.0)
 			var col := Color(gs, gs, gs, 1.0)
 
 			im.set_pixel(x, y, col)
@@ -65,7 +65,7 @@ static func _generate(normals: Image, size: Vector2) -> Texture:
 	normals.unlock();
 
 	var tex = ImageTexture.new()
-	tex.create_from_image(im, 0)
+	tex.create_from_image(im)
 
 	return tex
 

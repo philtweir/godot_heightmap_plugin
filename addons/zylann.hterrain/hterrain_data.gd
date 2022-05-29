@@ -2,7 +2,7 @@
 # Holds data of the terrain.
 # This is mostly a set of textures using specific formats, some precalculated, and metadata.
 
-tool
+@tool
 extends Resource
 
 const HT_Grid = preload("./util/grid.gd")
@@ -29,7 +29,9 @@ const _map_types = {
 	CHANNEL_HEIGHT: {
 		name = "height",
 		shader_param_name = "u_terrain_heightmap",
-		texture_flags = Texture.FLAG_FILTER,
+		# RMV texture_flags = Texture.FLAG_FILTER,
+		texture_filter = true,
+		texture_mipmaps = false,
 		texture_format = Image.FORMAT_RH,
 		default_fill = null,
 		default_count = 1,
@@ -40,7 +42,9 @@ const _map_types = {
 	CHANNEL_NORMAL: {
 		name = "normal",
 		shader_param_name = "u_terrain_normalmap",
-		texture_flags = Texture.FLAG_FILTER,
+		# RMV texture_flags = Texture.FLAG_FILTER,
+		texture_filter = true,
+		texture_mipmaps = false,
 		texture_format = Image.FORMAT_RGB8,
 		default_fill = Color(0.5, 0.5, 1.0),
 		default_count = 1,
@@ -56,7 +60,9 @@ const _map_types = {
 			"u_terrain_splatmap_2",
 			"u_terrain_splatmap_3"
 		],
-		texture_flags = Texture.FLAG_FILTER,
+		# RMV texture_flags = Texture.FLAG_FILTER,
+		texture_filter = true,
+		texture_mipmaps = false,
 		texture_format = Image.FORMAT_RGBA8,
 		default_fill = [Color(1, 0, 0, 0), Color(0, 0, 0, 0)],
 		default_count = 1,
@@ -67,7 +73,9 @@ const _map_types = {
 	CHANNEL_COLOR: {
 		name = "color",
 		shader_param_name = "u_terrain_colormap",
-		texture_flags = Texture.FLAG_FILTER,
+		# RMV texture_flags = Texture.FLAG_FILTER,
+		texture_filter = true,
+		texture_mipmaps = false,
 		texture_format = Image.FORMAT_RGBA8,
 		default_fill = Color(1, 1, 1, 1),
 		default_count = 1,
@@ -78,7 +86,9 @@ const _map_types = {
 	CHANNEL_DETAIL: {
 		name = "detail",
 		shader_param_name = "u_terrain_detailmap",
-		texture_flags = Texture.FLAG_FILTER,
+		# RMV texture_flags = Texture.FLAG_FILTER,
+		texture_filter = true,
+		texture_mipmaps = false,
 		texture_format = Image.FORMAT_R8,
 		default_fill = Color(0, 0, 0),
 		default_count = 0,
@@ -89,7 +99,9 @@ const _map_types = {
 	CHANNEL_GLOBAL_ALBEDO: {
 		name = "global_albedo",
 		shader_param_name = "u_terrain_globalmap",
-		texture_flags = Texture.FLAG_FILTER | Texture.FLAG_MIPMAPS,
+		# RMV texture_flags = Texture.FLAG_FILTER | Texture.FLAG_MIPMAPS,
+		texture_filter = true,
+		texture_mipmaps = true,
 		texture_format = Image.FORMAT_RGB8,
 		default_fill = null,
 		default_count = 0,
@@ -100,7 +112,9 @@ const _map_types = {
 	CHANNEL_SPLAT_INDEX: {
 		name = "splat_index",
 		shader_param_name = "u_terrain_splat_index_map",
-		texture_flags = 0,
+		# RMV texture_flags = 0,
+		texture_filter = false,
+		texture_mipmaps = false,
 		texture_format = Image.FORMAT_RGB8,
 		default_fill = Color(0, 0, 0),
 		default_count = 0,
@@ -111,7 +125,9 @@ const _map_types = {
 	CHANNEL_SPLAT_WEIGHT: {
 		name = "splat_weight",
 		shader_param_name = "u_terrain_splat_weight_map",
-		texture_flags = Texture.FLAG_FILTER,
+		# RMV texture_flags = Texture.FLAG_FILTER,
+		texture_filter = true,
+		texture_mipmaps = false,
 		texture_format = Image.FORMAT_RG8,
 		default_fill = Color(1, 0, 0),
 		default_count = 0,
@@ -369,8 +385,8 @@ func get_interpolated_height_at(pos: Vector3) -> float:
 
 # Gets all heights within the given rectangle in cells.
 # This height is raw and doesn't account for scaling of the terrain node.
-# Data is returned as a PoolRealArray.
-func get_heights_region(x0: int, y0: int, w: int, h: int) -> PoolRealArray:
+# Data is returned as a PackedFloat32Array.
+func get_heights_region(x0: int, y0: int, w: int, h: int) -> PackedFloat32Array:
 	var im = get_image(CHANNEL_HEIGHT)
 	assert(im != null)
 	
@@ -379,7 +395,7 @@ func get_heights_region(x0: int, y0: int, w: int, h: int) -> PoolRealArray:
 	var max_x := HT_Util.clamp_int(x0 + w, 0, im.get_width() + 1)
 	var max_y := HT_Util.clamp_int(y0 + h, 0, im.get_height() + 1)
 
-	var heights := PoolRealArray()
+	var heights := PackedFloat32Array()
 
 	var area = (max_x - min_x) * (max_y - min_y)
 	if area == 0:
@@ -403,8 +419,8 @@ func get_heights_region(x0: int, y0: int, w: int, h: int) -> PoolRealArray:
 
 # Gets all heights.
 # This height is raw and doesn't account for scaling of the terrain node.
-# Data is returned as a PoolRealArray.
-func get_all_heights() -> PoolRealArray:
+# Data is returned as a PackedFloat32Array.
+func get_all_heights() -> PackedFloat32Array:
 	return get_heights_region(0, 0, _resolution, _resolution)
 
 
@@ -588,8 +604,6 @@ func _upload_region(channel: int, index: int, min_x: int, min_y: int, size_x: in
 	if size_x <= 0 or size_y <= 0:
 		return
 
-	var flags = _map_types[channel].texture_flags
-
 	var texture = map.texture
 
 	if texture == null or not (texture is ImageTexture):
@@ -604,7 +618,7 @@ func _upload_region(channel: int, index: int, min_x: int, min_y: int, size_x: in
 				"The map ", channel, "[", index, "] will be uploaded entirely."))
 
 		texture = ImageTexture.new()
-		texture.create_from_image(image, flags)
+		texture.create_from_image(image)
 
 		map.texture = texture
 
@@ -615,39 +629,35 @@ func _upload_region(channel: int, index: int, min_x: int, min_y: int, size_x: in
 		_logger.debug(str(
 			"_upload_region was used but the image size is different. ",\
 			"The map ", channel, "[", index, "] will be reuploaded entirely."))
-		texture.create_from_image(image, flags)
+		texture.create_from_image(image)
 
 	else:
-		if VisualServer.has_method("texture_set_data_partial"):
-			VisualServer.texture_set_data_partial( \
-				texture.get_rid(), image, \
-				min_x, min_y, \
-				size_x, size_y, \
-				min_x, min_y, \
-				0, 0)
-		else:
-			# Godot 3.0.6 and earlier...
-			# It is slow.
+		# Godot 4 and later...
+		# It is slow.
 
-			#               ..ooo@@@XXX%%%xx..
-			#            .oo@@XXX%x%xxx..     ` .
-			#          .o@XX%%xx..               ` .
-			#        o@X%..                  ..ooooooo
-			#      .@X%x.                 ..o@@^^   ^^@@o
-			#    .ooo@@@@@@ooo..      ..o@@^          @X%
-			#    o@@^^^     ^^^@@@ooo.oo@@^             %
-			#   xzI    -*--      ^^^o^^        --*-     %
-			#   @@@o     ooooooo^@@^o^@X^@oooooo     .X%x
-			#  I@@@@@@@@@XX%%xx  ( o@o )X%x@ROMBASED@@@X%x
-			#  I@@@@XX%%xx  oo@@@@X% @@X%x   ^^^@@@@@@@X%x
-			#   @X%xx     o@@@@@@@X% @@XX%%x  )    ^^@X%x
-			#    ^   xx o@@@@@@@@Xx  ^ @XX%%x    xxx
-			#          o@@^^^ooo I^^ I^o ooo   .  x
-			#          oo @^ IX      I   ^X  @^ oo
-			#          IX     U  .        V     IX
-			#           V     .           .     V
-			#
-			texture.create_from_image(image, flags)
+		#               ..ooo@@@XXX%%%xx..
+		#            .oo@@XXX%x%xxx..     ` .
+		#          .o@XX%%xx..               ` .
+		#        o@X%..                  ..ooooooo
+		#      .@X%x.                 ..o@@^^   ^^@@o
+		#    .ooo@@@@@@ooo..      ..o@@^          @X%
+		#    o@@^^^     ^^^@@@ooo.oo@@^             %
+		#   xzI    -*--      ^^^o^^        --*-     %
+		#   @@@o     ooooooo^@@^o^@X^@oooooo     .X%x
+		#  I@@@@@@@@@XX%%xx  ( o@o )X%x@ROMBASED@@@X%x
+		#  I@@@@XX%%xx  oo@@@@X% @@X%x   ^^^@@@@@@@X%x
+		#   @X%xx     o@@@@@@@X% @@XX%%x  )    ^^@X%x
+		#    ^   xx o@@@@@@@@Xx  ^ @XX%%x    xxx
+		#          o@@^^^ooo I^^ I^o ooo   .  x
+		#          oo @^ IX      I   ^X  @^ oo
+		#          IX     U  .        V     IX
+		#           V     .           .     V
+		#
+		var src := Rect2(min_x, min_y, size_x, size_y)
+		var dst := Vector2(min_x, min_y)
+		var im: Image = RenderingServer.texture_2d_get(texture.get_rid())
+		im.blit_rect(image, src, dst) # RMV
+		RenderingServer.texture_2d_update(texture.get_rid(), im, 0)
 
 	#_logger.debug(str("Channel updated ", channel))
 
@@ -787,7 +797,7 @@ func get_point_aabb(cell_x: int, cell_y: int) -> Vector2:
 
 
 func get_region_aabb(origin_in_cells_x: int, origin_in_cells_y: int, \
-					 size_in_cells_x: int, size_in_cells_y: int) -> AABB:
+					size_in_cells_x: int, size_in_cells_y: int) -> AABB:
 
 	assert(typeof(origin_in_cells_x) == TYPE_INT)
 	assert(typeof(origin_in_cells_y) == TYPE_INT)
@@ -941,7 +951,8 @@ func _load_metadata(path: String):
 	assert(err == OK)
 	var text = f.get_as_text()
 	f.close()
-	var res = JSON.parse(text)
+	var json = JSON.new()
+	var res = json.parse(text)
 	assert(res.error == OK)
 	_deserialize_metadata(res.result)
 
@@ -949,7 +960,8 @@ func _load_metadata(path: String):
 func _save_metadata(path: String):
 	var f = File.new()
 	var d = _serialize_metadata()
-	var text = JSON.print(d, "\t", true)
+	var json = JSON.new()
+	var text = json.stringify(d, "\t", true)
 	var err = f.open(path, File.WRITE)
 	assert(err == OK)
 	f.store_string(text)
@@ -1098,8 +1110,7 @@ static func _try_write_default_import_options(fpath: String, channel: int, logge
 		return
 	
 	var map_info = _map_types[channel]
-	var texture_flags: int = map_info.texture_flags
-	var filter := (texture_flags & Texture.FLAG_FILTER) != 0
+	var filter: bool = map_info.texture_filter
 	var srgb: bool = map_info.srgb
 
 	var defaults = {
@@ -1172,7 +1183,7 @@ func _load_map(dir: String, map_type: int, index: int) -> bool:
 			map.image = tex
 			tex = ImageTexture.new()
 			var map_type_info = _map_types[map_type]
-			tex.create_from_image(map.image, map_type_info.texture_flags)
+			tex.create_from_image(map.image)
 			must_load_image_in_editor = false
 
 		map.texture = tex
@@ -1515,7 +1526,7 @@ class HT_CellRaycastContext:
 	var vertical_bounds : Image
 	var hit = null # Vector3
 	var heightmap : Image
-	var cell_cb_funcref : FuncRef
+	var cell_cb_funcref : Callable
 	var broad_param_2d_to_3d := 1.0
 	var cell_param_2d_to_3d := 1.0
 	#var dbg
@@ -1567,8 +1578,8 @@ class HT_CellRaycastContext:
 		var p01 := Vector3(cx,     h01, cz + 1)
 		var p11 := Vector3(cx + 1, h11, cz + 1)
 
-		var th0 = Geometry.ray_intersects_triangle(begin_pos, dir, p00, p10, p11)
-		var th1 = Geometry.ray_intersects_triangle(begin_pos, dir, p00, p11, p01)
+		var th0 = Geometry3D.ray_intersects_triangle(begin_pos, dir, p00, p10, p11)
+		var th1 = Geometry3D.ray_intersects_triangle(begin_pos, dir, p00, p11, p01)
 
 		if th0 != null:
 			return th0
@@ -1623,8 +1634,8 @@ func cell_raycast(ray_origin: Vector3, ray_direction: Vector3, max_distance: flo
 	ctx.dir_2d = ray_direction_2d
 	ctx.vertical_bounds = _chunked_vertical_bounds
 	ctx.heightmap = heightmap
-	# We are lucky FuncRef does not keep a strong reference to the object
-	ctx.cell_cb_funcref = funcref(ctx, "cell_cb")
+	# We are lucky FuncRef does not keep a strong reference to the object # RMV and now?
+	ctx.cell_cb_funcref = ctx.cell_cb
 	ctx.cell_param_2d_to_3d = max_distance / max_distance_2d
 	ctx.broad_param_2d_to_3d = ctx.cell_param_2d_to_3d * VERTICAL_BOUNDS_CHUNK_SIZE
 	#ctx.dbg = dbg
@@ -1637,7 +1648,7 @@ func cell_raycast(ray_origin: Vector3, ray_direction: Vector3, max_distance: flo
 	var broad_max_distance = \
 		clipped_segment_2d[0].distance_to(clipped_segment_2d[1]) / VERTICAL_BOUNDS_CHUNK_SIZE
 	var hit_bp = HT_Util.grid_raytrace_2d(broad_ray_origin, ray_direction_2d, 
-		funcref(ctx, "broad_cb"), broad_max_distance)
+		ctx.broad_cb, broad_max_distance)
 
 	heightmap.unlock()
 	_chunked_vertical_bounds.unlock()

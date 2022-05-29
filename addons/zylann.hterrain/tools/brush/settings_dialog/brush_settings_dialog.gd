@@ -1,4 +1,4 @@
-tool
+@tool
 extends AcceptDialog
 
 const HT_Util = preload("../../../util/util.gd")
@@ -6,20 +6,20 @@ const HT_Brush = preload("../brush.gd")
 const HT_Logger = preload("../../../util/logger.gd")
 const HT_EditorUtil = preload("../../util/editor_util.gd")
 
-onready var _scratchpad = $VB/HB/VB3/PreviewScratchpad
+@onready var _scratchpad = $VB/HB/VB3/PreviewScratchpad
 
-onready var _shape_list = $VB/HB/VB/ShapeList
-onready var _remove_shape_button = $VB/HB/VB/HBoxContainer/RemoveShape
-onready var _change_shape_button = $VB/HB/VB/ChangeShape
+@onready var _shape_list = $VB/HB/VB/ShapeList
+@onready var _remove_shape_button = $VB/HB/VB/HBoxContainer/RemoveShape
+@onready var _change_shape_button = $VB/HB/VB/ChangeShape
 
-onready var _size_slider = $VB/HB/VB2/Settings/Size
-onready var _opacity_slider = $VB/HB/VB2/Settings/Opacity
-onready var _pressure_enabled_checkbox = $VB/HB/VB2/Settings/PressureEnabled
-onready var _pressure_over_size_slider = $VB/HB/VB2/Settings/PressureOverSize
-onready var _pressure_over_opacity_slider = $VB/HB/VB2/Settings/PressureOverOpacity
-onready var _frequency_distance_slider = $VB/HB/VB2/Settings/FrequencyDistance
-onready var _frequency_time_slider = $VB/HB/VB2/Settings/FrequencyTime
-onready var _random_rotation_checkbox = $VB/HB/VB2/Settings/RandomRotation
+@onready var _size_slider = $VB/HB/VB2/Settings/Size
+@onready var _opacity_slider = $VB/HB/VB2/Settings/Opacity
+@onready var _pressure_enabled_checkbox = $VB/HB/VB2/Settings/PressureEnabled
+@onready var _pressure_over_size_slider = $VB/HB/VB2/Settings/PressureOverSize
+@onready var _pressure_over_opacity_slider = $VB/HB/VB2/Settings/PressureOverOpacity
+@onready var _frequency_distance_slider = $VB/HB/VB2/Settings/FrequencyDistance
+@onready var _frequency_time_slider = $VB/HB/VB2/Settings/FrequencyTime
+@onready var _random_rotation_checkbox = $VB/HB/VB2/Settings/RandomRotation
 
 var _brush : HT_Brush
 # This is a `EditorFileDialog`,
@@ -35,12 +35,12 @@ func _ready():
 	if HT_Util.is_in_edited_scene(self):
 		return
 	
-	_size_slider.set_max_value(HT_Brush.MAX_SIZE_FOR_SLIDERS)
-	_size_slider.set_greater_max_value(HT_Brush.MAX_SIZE)
+	_size_slider.max_value = HT_Brush.MAX_SIZE_FOR_SLIDERS
+	_size_slider.greater_max_value = HT_Brush.MAX_SIZE
 	
 	# TESTING
-	if not Engine.editor_hint:
-		setup_dialogs(self)
+	if not Engine.is_editor_hint():
+		setup_dialogs(self.gui_get_focus_owner())
 		call_deferred("popup")
 
 
@@ -53,13 +53,13 @@ func set_brush(brush : HT_Brush):
 func setup_dialogs(base_control: Control):
 	assert(_load_image_dialog == null)
 	_load_image_dialog = HT_EditorUtil.create_open_file_dialog()
-	_load_image_dialog.mode = EditorFileDialog.MODE_OPEN_FILE
+	_load_image_dialog.mode = EditorFileDialog.FILE_MODE_OPEN_FILE
 	_load_image_dialog.add_filter("*.exr ; EXR files")
-	_load_image_dialog.resizable = true
+	_load_image_dialog.unresizable = false
 	_load_image_dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
 	_load_image_dialog.current_dir = HT_Brush.SHAPES_DIR
-	_load_image_dialog.connect("file_selected", self, "_on_LoadImageDialog_file_selected")
-	_load_image_dialog.connect("files_selected", self, "_on_LoadImageDialog_files_selected")
+	_load_image_dialog.connect("file_selected", self._on_LoadImageDialog_file_selected)
+	_load_image_dialog.connect("files_selected", self._on_LoadImageDialog_files_selected)
 	base_control.add_child(_load_image_dialog)
 
 
@@ -125,7 +125,7 @@ func _request_modify_shape(index: int):
 	_load_image_dialog.popup_centered_ratio(0.7)
 
 
-func _on_LoadImageDialog_files_selected(fpaths: PoolStringArray):
+func _on_LoadImageDialog_files_selected(fpaths: PackedStringArray):
 	var shapes := _get_shapes_from_gui()
 	
 	for fpath in fpaths:
@@ -163,9 +163,10 @@ func _on_LoadImageDialog_file_selected(fpath: String):
 
 
 func _notification(what: int):
-	if what == NOTIFICATION_VISIBILITY_CHANGED:
-		if visible:
-			_update_controls_from_brush()
+	match what:
+		NOTIFICATION_VISIBILITY_CHANGED, NOTIFICATION_READY:
+			if visible and _scratchpad:
+				_update_controls_from_brush()
 
 
 func _update_controls_from_brush():
@@ -177,14 +178,14 @@ func _update_controls_from_brush():
 
 	_update_shapes_gui(brush.get_shapes())
 
-	_size_slider.set_value(brush.get_size(), false)
+	_size_slider.value = brush.get_size()
 	_opacity_slider.set_value(brush.get_opacity() * 100.0, false)
-	_pressure_enabled_checkbox.pressed = brush.is_pressure_enabled()
+	_pressure_enabled_checkbox.button_pressed = brush.is_pressure_enabled()
 	_pressure_over_size_slider.set_value(brush.get_pressure_over_scale() * 100.0, false)
 	_pressure_over_opacity_slider.set_value(brush.get_pressure_over_opacity() * 100.0, false)
 	_frequency_distance_slider.set_value(brush.get_frequency_distance(), false)
 	_frequency_time_slider.set_value(1000.0 / max(0.1, float(brush.get_frequency_time_ms())), false)
-	_random_rotation_checkbox.pressed = brush.is_random_rotation_enabled()
+	_random_rotation_checkbox.button_pressed = brush.is_random_rotation_enabled()
 
 
 func _on_ClearScratchpad_pressed():
@@ -248,7 +249,7 @@ func _on_ShapeList_item_selected(index):
 	_update_shape_list_buttons()
 
 
-func _on_ShapeList_nothing_selected():
+func _on_ShapeList_empty_clicked():
 	_update_shape_list_buttons()
 
 

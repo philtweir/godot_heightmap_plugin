@@ -1,8 +1,9 @@
-tool
+@tool
 # Independent quad tree designed to handle LOD
 
 class HT_QTLQuad:
-	var children = null
+	var children = []
+	var _has_children = false
 	var origin_x : int = 0
 	var origin_y : int = 0
 	var data = null
@@ -10,15 +11,20 @@ class HT_QTLQuad:
 	func _init():
 		pass
 	
+	func set_children(_children):
+		children = _children
+		_has_children = true
+	
 	func clear():
 		clear_children()
 		data = null
 	
 	func clear_children():
-		children = null
+		children = []
+		_has_children = false
 	
 	func has_children():
-		return children != null
+		return _has_children
 
 
 var _tree := HT_QTLQuad.new()
@@ -26,12 +32,12 @@ var _max_depth : int = 0
 var _base_size : int = 16
 var _split_scale : float = 2.0
 
-var _make_func : FuncRef = null
-var _recycle_func : FuncRef = null
-var _vertical_bounds_func : FuncRef = null
+var _make_func : Callable = null
+var _recycle_func : Callable = null
+var _vertical_bounds_func : Callable = null
 
 
-func set_callbacks(make_cb: FuncRef, recycle_cb: FuncRef, vbounds_cb: FuncRef):
+func set_callbacks(make_cb: Callable, recycle_cb: Callable, vbounds_cb: Callable):
 	_make_func = make_cb
 	_recycle_func = recycle_cb
 	_vertical_bounds_func = vbounds_cb
@@ -99,7 +105,7 @@ func _update(quad: HT_QTLQuad, lod: int, view_pos: Vector3):
 		chunk_size * (Vector3(quad.origin_x, 0, quad.origin_y) + Vector3(0.5, 0, 0.5))
 	
 	if _vertical_bounds_func != null:
-		var vbounds = _vertical_bounds_func.call_func(quad.origin_x, quad.origin_y, lod)
+		var vbounds = _vertical_bounds_func.call(quad.origin_x, quad.origin_y, lod)
 		world_center.y = (vbounds.x + vbounds.y) / 2.0
 	
 	var split_distance := _base_size * lod_factor * _split_scale
@@ -107,7 +113,7 @@ func _update(quad: HT_QTLQuad, lod: int, view_pos: Vector3):
 	if not quad.has_children():
 		if lod > 0 and world_center.distance_to(view_pos) < split_distance:
 			# Split
-			quad.children = [null, null, null, null]
+			quad.set_children([null, null, null, null])
 
 			for i in 4:
 				var child := HT_QTLQuad.new()
@@ -153,13 +159,13 @@ func _join_all_recursively(quad: HT_QTLQuad, lod: int):
 func _make_chunk(lod: int, origin_x: int, origin_y: int):
 	var chunk = null
 	if _make_func != null:
-		chunk = _make_func.call_func(origin_x, origin_y, lod)
+		chunk = _make_func.call(origin_x, origin_y, lod)
 	return chunk
 
 
 func _recycle_chunk(chunk, origin_x: int, origin_y: int, lod: int):
 	if _recycle_func != null:
-		_recycle_func.call_func(chunk, origin_x, origin_y, lod)
+		_recycle_func.call(chunk, origin_x, origin_y, lod)
 
 
 func debug_draw_tree(ci: CanvasItem):

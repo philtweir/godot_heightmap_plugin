@@ -1,5 +1,5 @@
-tool
-extends Spatial
+@tool
+extends Node3D
 
 const HT_NativeFactory = preload("./native/factory.gd")
 const HT_Mesher = preload("./hterrain_mesher.gd")
@@ -140,16 +140,43 @@ const _DEBUG_AABB = false
 
 signal transform_changed(global_transform)
 
-export(float, 0.0, 1.0) var ambient_wind := 0.0 setget set_ambient_wind
-export(int, 2, 5) var lod_scale := 2.0 setget set_lod_scale, get_lod_scale
+@export_range(0.0, 1.0) var ambient_wind: float = 0.0:
+	set(amplitude):
+		if ambient_wind == amplitude:
+			return
+		ambient_wind = amplitude
+		for layer in _detail_layers:
+			layer.update_material()
+
+@export_range(2.0, 5.0) var lod_scale: float = 2.0:
+	get:
+		return _lodder.get_split_scale()
+	set(lod_scale):
+		_lodder.set_split_scale(lod_scale)
 
 # TODO Replace with `size` in world units?
 # Prefer using this instead of scaling the node's transform.
-# Spatial.scale isn't used because it's not suitable for terrains,
+# Node3D.scale isn't used because it's not suitable for terrains,
 # it would scale grass too and other environment objects.
-export var map_scale := Vector3(1, 1, 1) setget set_map_scale
+@export var map_scale := Vector3(1, 1, 1):
+	set(p_map_scale):
+		if map_scale == p_map_scale:
+			return
+		p_map_scale.x = max(p_map_scale.x, MIN_MAP_SCALE)
+		p_map_scale.y = max(p_map_scale.y, MIN_MAP_SCALE)
+		p_map_scale.z = max(p_map_scale.z, MIN_MAP_SCALE)
+		map_scale = p_map_scale
+		_on_transform_changed()
 
-export var centered := false setget set_centered
+
+
+@export var centered := false:
+	set(p_centered):
+		if p_centered == centered:
+			return
+		centered = p_centered
+		_on_transform_changed()
+
 
 var _custom_shader : Shader = null
 var _custom_globalmap_shader : Shader = null
@@ -204,9 +231,9 @@ func _init():
 	# This sets up the defaults. They may be overriden shortly after by the scene loader.
 
 	_lodder.set_callbacks( \
-		funcref(self, "_cb_make_chunk"), \
-		funcref(self,"_cb_recycle_chunk"), \
-		funcref(self, "_cb_get_vertical_bounds"))
+		self._cb_make_chunk, \
+		self._cb_recycle_chunk, \
+		self._cb_get_vertical_bounds)
 
 	set_notify_transform(true)
 
@@ -218,7 +245,7 @@ func _init():
 
 	_material.shader = load(_builtin_shaders[_shader_type].path)
 
-	_texture_set.connect("changed", self, "_on_texture_set_changed")
+	_texture_set.connect("changed", self._on_texture_set_changed)
 	
 	if _collision_enabled:
 		if _check_heightmap_collider_support():
@@ -326,7 +353,7 @@ func _get_property_list():
 	]
 
 	if _material.shader != null:
-		var shader_params := VisualServer.shader_get_param_list(_material.shader.get_rid())
+		var shader_params := RenderingServer.shader_get_param_list(_material.shader.get_rid())
 		for p in shader_params:
 			if _api_shader_params.has(p.name):
 				continue
@@ -339,7 +366,8 @@ func _get_property_list():
 	return props
 
 
-func _get(key: String):
+func _get(key: StringName):
+	var key_string = String(key)
 	if key == "data_directory":
 		return _get_data_directory()
 
@@ -363,8 +391,8 @@ func _get(key: String):
 	elif key == "custom_globalmap_shader":
 		return _custom_globalmap_shader
 
-	elif key.begins_with("shader_params/"):
-		var param_name = key.right(len("shader_params/"))
+	elif key_string.begins_with("shader_params/"):
+		var param_name = key_string.right(len("shader_params/"))
 		return get_shader_param(param_name)
 
 	elif key == "chunk_size":
@@ -383,7 +411,8 @@ func _get(key: String):
 		return get_render_layer_mask()
 	
 
-func _set(key: String, value):
+func _set(key: StringName, value):
+	var key_string = String(key)
 	if key == "data_directory":
 		_set_data_directory(value)
 
@@ -396,11 +425,11 @@ func _set(key: String, value):
 		set_texture_set(value)
 
 	# Legacy, left for migration from 1.4
-	if key.begins_with("ground/"):
+	if key_string.begins_with("ground/"):
 		for ground_texture_type in HTerrainTextureSet.TYPE_COUNT:
 			var type_name = _ground_enum_to_name[ground_texture_type]
-			if key.begins_with(str("ground/", type_name, "_")):
-				var i = key.right(len(key) - 1).to_int()
+			if key_string.begins_with(str("ground/", type_name, "_")):
+				var i = key_string.right(len(key) - 1).to_int()
 				if _texture_set_migration_textures == null:
 					_texture_set_migration_textures = []
 				while i >= len(_texture_set_migration_textures):
@@ -417,8 +446,8 @@ func _set(key: String, value):
 	elif key == "custom_globalmap_shader":
 		_custom_globalmap_shader = value
 
-	elif key.begins_with("shader_params/"):
-		var param_name = key.right(len("shader_params/"))
+	elif key_string.begins_with("shader_params/"):
+		var param_name = key_string.right(len("shader_params/"))
 		set_shader_param(param_name, value)
 
 	elif key == "chunk_size":
@@ -451,12 +480,12 @@ func set_texture_set(new_set: HTerrainTextureSet):
 
 	if _texture_set != null:
 		# TODO This causes `ERROR: Nonexistent signal 'changed' in [Resource:36653]` for some reason
-		_texture_set.disconnect("changed", self, "_on_texture_set_changed")
+		_texture_set.disconnect("changed", self._on_texture_set_changed)
 
 	_texture_set = new_set
 
 	if _texture_set != null:
-		_texture_set.connect("changed", self, "_on_texture_set_changed")
+		_texture_set.connect("changed", self._on_texture_set_changed)
 
 	_material_params_need_update = true
 
@@ -568,29 +597,13 @@ func set_chunk_size(p_cs: int):
 	_reset_ground_chunks()
 
 
-func set_map_scale(p_map_scale: Vector3):
-	if map_scale == p_map_scale:
-		return
-	p_map_scale.x = max(p_map_scale.x, MIN_MAP_SCALE)
-	p_map_scale.y = max(p_map_scale.y, MIN_MAP_SCALE)
-	p_map_scale.z = max(p_map_scale.z, MIN_MAP_SCALE)
-	map_scale = p_map_scale
-	_on_transform_changed()
-
-
-func set_centered(p_centered: bool):
-	if p_centered == centered:
-		return
-	centered = p_centered
-	_on_transform_changed()
-
 
 # Gets the global transform to apply to terrain geometry,
-# which is different from Spatial.global_transform gives.
+# which is different from Node3D.global_transform gives.
 # global_transform must only have translation and rotation. Scale support is undefined.
-func get_internal_transform() -> Transform:
+func get_internal_transform() -> Transform3D:
 	var gt = global_transform
-	var it = Transform(gt.basis * Basis().scaled(map_scale), gt.origin)
+	var it = Transform3D(gt.basis * Basis().scaled(map_scale), gt.origin)
 	if centered and _data != null:
 		var half_size = 0.5 * (_data.get_resolution() - 1.0)
 		it.origin += it.basis * (-Vector3(half_size, 0, half_size))
@@ -637,9 +650,9 @@ func _notification(what: int):
 						_texture_set.set_texture(slot_index, type, texs[type])
 				_texture_set_migration_textures = null
 
-			_for_all_chunks(HT_EnterWorldAction.new(get_world()))
+			_for_all_chunks(HT_EnterWorldAction.new(get_world_3d()))
 			if _collider != null:
-				_collider.set_world(get_world())
+				_collider.set_world(get_world_3d())
 				_collider.set_transform(get_internal_transform())
 
 		NOTIFICATION_EXIT_WORLD:
@@ -721,11 +734,11 @@ func set_data(new_data: HTerrainData):
 
 	if has_data():
 		_logger.debug("Disconnecting old HeightMapData")
-		_data.disconnect("resolution_changed", self, "_on_data_resolution_changed")
-		_data.disconnect("region_changed", self, "_on_data_region_changed")
-		_data.disconnect("map_changed", self, "_on_data_map_changed")
-		_data.disconnect("map_added", self, "_on_data_map_added")
-		_data.disconnect("map_removed", self, "_on_data_map_removed")
+		_data.disconnect("resolution_changed", self._on_data_resolution_changed)
+		_data.disconnect("region_changed", self._on_data_region_changed)
+		_data.disconnect("map_changed", self._on_data_map_changed)
+		_data.disconnect("map_added", self._on_data_map_added)
+		_data.disconnect("map_removed", self._on_data_map_removed)
 
 		if _normals_baker != null:
 			_normals_baker.set_terrain_data(null)
@@ -748,11 +761,11 @@ func set_data(new_data: HTerrainData):
 		if _collider != null:
 			_collider.create_from_terrain_data(_data)
 
-		_data.connect("resolution_changed", self, "_on_data_resolution_changed")
-		_data.connect("region_changed", self, "_on_data_region_changed")
-		_data.connect("map_changed", self, "_on_data_map_changed")
-		_data.connect("map_added", self, "_on_data_map_added")
-		_data.connect("map_removed", self, "_on_data_map_removed")
+		_data.connect("resolution_changed", self._on_data_resolution_changed)
+		_data.connect("region_changed", self._on_data_region_changed)
+		_data.connect("map_changed", self._on_data_map_changed)
+		_data.connect("map_added", self._on_data_map_added)
+		_data.connect("map_removed", self._on_data_map_removed)
 
 		if _normals_baker != null:
 			_normals_baker.set_terrain_data(_data)
@@ -869,7 +882,7 @@ func set_shader_type(type: String):
 	_material_params_need_update = true
 	
 	if Engine.editor_hint:
-		property_list_changed_notify()
+		notify_property_list_changed()
 
 
 func get_custom_shader() -> Shader:
@@ -881,11 +894,11 @@ func set_custom_shader(shader: Shader):
 		return
 
 	if _custom_shader != null:
-		_custom_shader.disconnect("changed", self, "_on_custom_shader_changed")
+		_custom_shader.disconnect("changed", self._on_custom_shader_changed)
 
 	if Engine.is_editor_hint() and shader != null and is_inside_tree():
 		# When the new shader is empty, allow to fork from the previous shader
-		if shader.get_code().empty():
+		if shader.get_code() == "":
 			_logger.debug("Populating custom shader with default code")
 			var src := _material.shader
 			if src == null:
@@ -900,12 +913,12 @@ func set_custom_shader(shader: Shader):
 		_material.shader = _custom_shader
 
 	if _custom_shader != null:
-		_custom_shader.connect("changed", self, "_on_custom_shader_changed")
+		_custom_shader.connect("changed", self._on_custom_shader_changed)
 		if _shader_type == SHADER_CUSTOM:
 			_material_params_need_update = true
 	
 	if Engine.editor_hint:
-		property_list_changed_notify()
+		notify_property_list_changed()
 
 
 func _on_custom_shader_changed():
@@ -977,7 +990,7 @@ func _update_material_params():
 
 	var shader := _material.shader
 	if shader != null:
-		var param_list := VisualServer.shader_get_param_list(shader.get_rid())
+		var param_list := RenderingServer.shader_get_param_list(shader.get_rid())
 		_ground_texture_count_cache = 0
 		for p in param_list:
 			if _api_shader_ground_albedo_params.has(p.name):
@@ -1016,8 +1029,8 @@ static func _get_common_shader_params(shader1: Shader, shader2: Shader) -> Array
 	var shader1_param_names := {}
 	var common_params := []
 	
-	var shader1_params := VisualServer.shader_get_param_list(shader1.get_rid())
-	var shader2_params := VisualServer.shader_get_param_list(shader2.get_rid())
+	var shader1_params := RenderingServer.shader_get_param_list(shader1.get_rid())
+	var shader2_params := RenderingServer.shader_get_param_list(shader2.get_rid())
 	
 	for p in shader1_params:
 		shader1_param_names[p.name] = true
@@ -1053,14 +1066,6 @@ func get_globalmap_shader() -> Shader:
 			return load(_builtin_shaders[SHADER_ARRAY].global_path) as Shader
 		return load(_builtin_shaders[SHADER_CLASSIC4].global_path) as Shader
 	return load(_builtin_shaders[_shader_type].global_path) as Shader
-
-
-func set_lod_scale(lod_scale: float):
-	_lodder.set_split_scale(lod_scale)
-
-
-func get_lod_scale() -> float:
-	return _lodder.get_split_scale()
 
 
 func get_lod_count() -> int:
@@ -1101,11 +1106,11 @@ const s_rdirs = [
 ]
 
 
-func _edit_update_viewer_position(camera: Camera):
+func _edit_update_viewer_position(camera: Camera3D):
 	_update_viewer_position(camera)
 
 
-func _update_viewer_position(camera: Camera):
+func _update_viewer_position(camera: Camera3D):
 	if camera == null:
 		var viewport := get_viewport()
 		if viewport != null:
@@ -1114,7 +1119,7 @@ func _update_viewer_position(camera: Camera):
 	if camera == null:
 		return
 	
-	if camera.projection == Camera.PROJECTION_ORTHOGONAL:
+	if camera.projection == Camera3D.PROJECTION_ORTHOGONAL:
 		# In this mode, due to the fact Godot does not allow negative near plane,
 		# users have to pull the camera node very far away, but it confuses LOD
 		# into very low detail, while the seen area remains the same.
@@ -1377,8 +1382,8 @@ func cell_raycast(origin_world: Vector3, dir_world: Vector3, max_distance: float
 		return null
 	# Transform to local (takes map scale into account)
 	var to_local := get_internal_transform().affine_inverse()
-	var origin = to_local.xform(origin_world)
-	var dir = to_local.basis.xform(dir_world)
+	var origin = to_local * origin_world
+	var dir = to_local.basis * dir_world
 	return _data.cell_raycast(origin, dir, max_distance)
 
 
@@ -1413,7 +1418,7 @@ func _get_ground_texture_array_shader_param_name(type: int) -> String:
 
 
 # @obsolete
-func get_ground_texture_array(type: int) -> TextureArray:
+func get_ground_texture_array(type: int) -> Texture2DArray:
 	_logger.error(
 		"HTerrain.get_ground_texture_array is obsolete, " +
 		"use HTerrain.get_texture_set().get_texture_array(type) instead")
@@ -1422,7 +1427,7 @@ func get_ground_texture_array(type: int) -> TextureArray:
 
 
 # @obsolete
-func set_ground_texture_array(type: int, texture_array: TextureArray):
+func set_ground_texture_array(type: int, texture_array: Texture2DArray):
 	_logger.error(
 		"HTerrain.set_ground_texture_array is obsolete, " +
 		"use HTerrain.get_texture_set().set_texture_array(type, texarray) instead")
@@ -1457,13 +1462,6 @@ func get_detail_texture(slot):
 	_logger.error(
 		"HTerrain.get_detail_texture is obsolete, use HTerrainDetailLayer.texture instead")
 
-
-func set_ambient_wind(amplitude: float):
-	if ambient_wind == amplitude:
-		return
-	ambient_wind = amplitude
-	for layer in _detail_layers:
-		layer.update_material()
 
 
 static func _check_ground_texture_type(ground_texture_type: int):
@@ -1557,7 +1555,7 @@ class HT_PendingChunkUpdate:
 
 
 class HT_EnterWorldAction:
-	var world : World = null
+	var world : World3D = null
 	func _init(w):
 		world = w
 	func exec(chunk):
@@ -1570,7 +1568,7 @@ class HT_ExitWorldAction:
 
 
 class HT_TransformChangedAction:
-	var transform : Transform
+	var transform : Transform3D
 	func _init(t):
 		transform = t
 	func exec(chunk):

@@ -1,5 +1,5 @@
-tool
-extends Spatial
+@tool
+extends Node3D
 
 # Child node of the terrain, used to render numerous small objects on the ground
 # such as grass or rocks. They do so by using a texture covering the terrain
@@ -41,32 +41,102 @@ const _API_SHADER_PARAMS = {
 
 # TODO Should be renamed `map_index`
 # Which detail map this layer will use
-export(int) var layer_index := 0 setget set_layer_index, get_layer_index
+@export var layer_index: int = 0:
+	get:
+		return layer_index
+	set(v):
+		if layer_index == v:
+			return
+		layer_index = v
+		if is_inside_tree():
+			_update_material()
+			HT_Util.update_configuration_warning(self, false)
 
 # Texture to render on the detail meshes.
-export(Texture) var texture : Texture setget set_texture, get_texture
+@export var texture: Texture:
+	get:
+		return texture
+	set(tex):
+		texture = tex
+		_material.set_shader_param("u_albedo_alpha", tex)
+
+
 
 # How far detail meshes can be seen.
 # TODO Improve speed of _get_chunk_aabb() so we can increase the limit
 # See https://github.com/Zylann/godot_heightmap_plugin/issues/155
-export(float, 1.0, 500.0) \
-	var view_distance := 100.0 setget set_view_distance, get_view_distance
+@export_range(1.0, 500.0) \
+	var view_distance: float = 100.0:
+	get:
+		return view_distance
+	set(v):
+		if view_distance == v:
+			return
+		view_distance = max(v, 1.0)
+		if is_inside_tree():
+			_update_material()
+
+
 
 # Custom shader to replace the default one.
-export(Shader) \
-	var custom_shader : Shader setget set_custom_shader, get_custom_shader
+@export \
+	var custom_shader: Shader:
+	get:
+		return custom_shader
+	set(shader):
+		if custom_shader == shader:
+			return
+		custom_shader = shader
+		if custom_shader == null:
+			_material.shader = load(DEFAULT_SHADER_PATH)
+		else:
+			_material.shader = custom_shader
+
+			if Engine.editor_hint:
+				# Ability to fork default shader
+				if shader.code == "":
+					shader.code = _default_shader.code
+
 
 # Density modifier, to make more or less detail meshes appear overall.
-export(float, 0, 10) var density := 4.0 setget set_density, get_density
+@export_range(0, 10) var density: float = 4.0:
+	get:
+		return density
+	set(v):
+		v = clamp(v, 0, 10)
+		if v == density:
+			return
+		density = v
+		_multimesh_need_regen = true
+
+
 
 # Mesh used for every detail instance (for example, every grass patch).
 # If not assigned, an internal quad mesh will be used.
 # I would have called it `mesh` but that's too broad and conflicts with local vars ._.
-export(Mesh) var instance_mesh : Mesh setget set_instance_mesh, get_instance_mesh
+@export var instance_mesh : Mesh:
+	get:
+		return instance_mesh
+	set(p_mesh):
+		if p_mesh == instance_mesh:
+			return
+		instance_mesh = p_mesh
+		_multimesh.mesh = _get_used_mesh()
+
+
 
 # Exposes rendering layers, similar to `VisualInstance.layers`
-export(int, LAYERS_3D_RENDER) \
-	var render_layers := 1 setget set_render_layer_mask, get_render_layer_mask
+@export_flags_3d_render \
+	var render_layers := 1:
+	get:
+		return render_layers
+	set(mask):
+		render_layers = mask
+		for k in _chunks:
+			var chunk = _chunks[k]
+			chunk.set_layer_mask(mask)
+
+
 
 var _material: ShaderMaterial = null
 var _default_shader: Shader = null
@@ -154,7 +224,7 @@ func _get_property_list() -> Array:
 	# Dynamic properties coming from the shader
 	var props := []
 	if _material != null:
-		var shader_params = VisualServer.shader_get_param_list(_material.shader.get_rid())
+		var shader_params = RenderingServer.shader_get_param_list(_material.shader.get_rid())
 		for p in shader_params:
 			if _API_SHADER_PARAMS.has(p.name):
 				continue
@@ -166,15 +236,17 @@ func _get_property_list() -> Array:
 	return props
 
 
-func _get(key: String):
-	if key.begins_with("shader_params/"):
-		var param_name = key.right(len("shader_params/"))
+func _get(key: StringName):
+	var key_string = String(key)
+	if key_string.begins_with("shader_params/"):
+		var param_name = key_string.right(len("shader_params/"))
 		return get_shader_param(param_name)
 
 
-func _set(key: String, v):
-	if key.begins_with("shader_params/"):
-		var param_name = key.right(len("shader_params/"))
+func _set(key: StringName, v):
+	var key_string = String(key)
+	if key_string.begins_with("shader_params/"):
+		var param_name = key_string.right(len("shader_params/"))
 		set_shader_param(param_name, v)
 
 
@@ -192,15 +264,6 @@ func _get_terrain():
 	return null
 
 
-func set_texture(tex: Texture):
-	texture = tex
-	_material.set_shader_param("u_albedo_alpha", tex)
-
-
-func get_texture() -> Texture:
-	return texture
-
-
 func set_layer_index(v: int):
 	if layer_index == v:
 		return
@@ -214,57 +277,6 @@ func get_layer_index() -> int:
 	return layer_index
 
 
-func set_view_distance(v: float):
-	if view_distance == v:
-		return
-	view_distance = max(v, 1.0)
-	if is_inside_tree():
-		_update_material()
-
-
-func get_view_distance() -> float:
-	return view_distance
-
-
-func set_custom_shader(shader: Shader):
-	if custom_shader == shader:
-		return
-	custom_shader = shader
-	if custom_shader == null:
-		_material.shader = load(DEFAULT_SHADER_PATH)
-	else:
-		_material.shader = custom_shader
-
-		if Engine.editor_hint:
-			# Ability to fork default shader
-			if shader.code == "":
-				shader.code = _default_shader.code
-
-
-func get_custom_shader() -> Shader:
-	return custom_shader
-
-
-func set_instance_mesh(p_mesh: Mesh):
-	if p_mesh == instance_mesh:
-		return
-	instance_mesh = p_mesh
-	_multimesh.mesh = _get_used_mesh()
-
-
-func get_instance_mesh() -> Mesh:
-	return instance_mesh
-
-
-func set_render_layer_mask(mask: int):
-	render_layers = mask
-	for k in _chunks:
-		var chunk = _chunks[k]
-		chunk.set_layer_mask(mask)
-
-
-func get_render_layer_mask() -> int:
-	return render_layers
 
 
 func _get_used_mesh() -> Mesh:
@@ -274,18 +286,6 @@ func _get_used_mesh() -> Mesh:
 			_logger.error(str("Failed to load default mesh: ", DEFAULT_MESH_PATH))
 		return mesh
 	return instance_mesh
-
-
-func set_density(v: float):
-	v = clamp(v, 0, 10)
-	if v == density:
-		return
-	density = v
-	_multimesh_need_regen = true
-
-
-func get_density() -> float:
-	return density
 
 
 # Updates texture references and values that come from the terrain itself.
@@ -299,7 +299,7 @@ func update_material():
 func _notification(what: int):
 	match what:
 		NOTIFICATION_ENTER_WORLD:
-			_set_world(get_world())
+			_set_world(get_world_3d())
 
 		NOTIFICATION_EXIT_WORLD:
 			_set_world(null)
@@ -314,13 +314,13 @@ func _set_visible(v: bool):
 		chunk.set_visible(v)
 
 
-func _set_world(w: World):
+func _set_world(w: World3D):
 	for k in _chunks:
 		var chunk = _chunks[k]
 		chunk.set_world(w)
 
 
-func _on_terrain_transform_changed(gt: Transform):
+func _on_terrain_transform_changed(gt: Transform3D):
 	_update_material()
 
 	var terrain = _get_terrain()
@@ -328,7 +328,7 @@ func _on_terrain_transform_changed(gt: Transform):
 		_logger.error("Detail layer is not child of a terrain!")
 		return
 	
-	var terrain_transform : Transform = terrain.get_internal_transform()
+	var terrain_transform : Transform3D = terrain.get_internal_transform()
 
 	# Update AABBs and transforms, because scale might have changed
 	for k in _chunks:
@@ -357,7 +357,7 @@ func process(delta: float, viewer_pos: Vector3):
 			mmi.set_multimesh(_multimesh)
 
 	# Detail layers are unaffected by ground map_scale
-	var terrain_transform_without_map_scale : Transform = terrain.get_internal_transform_unscaled()
+	var terrain_transform_without_map_scale : Transform3D = terrain.get_internal_transform_unscaled()
 	var local_viewer_pos := terrain_transform_without_map_scale.affine_inverse() * viewer_pos
 
 	var viewer_cx = local_viewer_pos.x / CHUNK_SIZE
@@ -445,16 +445,16 @@ func _get_chunk_aabb(terrain, lpos: Vector3):
 	return aabb
 
 
-func _get_chunk_transform(terrain_transform: Transform, cx: int, cz: int) -> Transform:
+func _get_chunk_transform(terrain_transform: Transform3D, cx: int, cz: int) -> Transform3D:
 	var lpos := Vector3(cx, 0, cz) * CHUNK_SIZE
 	# `terrain_transform` should be the terrain's internal transform, without `map_scale`.
-	var trans := Transform(
+	var trans := Transform3D(
 		terrain_transform.basis,
 		terrain_transform.origin + terrain_transform.basis * lpos)
 	return trans
 
 
-func _load_chunk(terrain_transform_without_map_scale: Transform, cx: int, cz: int, aabb: AABB):
+func _load_chunk(terrain_transform_without_map_scale: Transform3D, cx: int, cz: int, aabb: AABB):
 	aabb.position.x = 0
 	aabb.position.z = 0
 
@@ -464,7 +464,7 @@ func _load_chunk(terrain_transform_without_map_scale: Transform, cx: int, cz: in
 		_multimesh_instance_pool.pop_back()
 	else:
 		mmi = HT_DirectMultiMeshInstance.new()
-		mmi.set_world(get_world())
+		mmi.set_world(get_world_3d())
 		mmi.set_multimesh(_multimesh)
 
 	var trans := _get_chunk_transform(terrain_transform_without_map_scale, cx, cz)
@@ -500,7 +500,7 @@ func _update_material():
 
 	var terrain_data = null
 	var terrain = _get_terrain()
-	var it = Transform()
+	var it = Transform3D()
 	var normal_basis = Basis()
 
 	if terrain != null:
@@ -548,11 +548,11 @@ func _update_material():
 
 
 func _add_debug_cube(terrain, aabb: AABB):
-	var world = terrain.get_world()
+	var world = terrain.get_world_3d()
 
 	if _debug_wirecube_mesh == null:
 		_debug_wirecube_mesh = HT_Util.create_wirecube_mesh()
-		var mat = SpatialMaterial.new()
+		var mat = BaseMaterial3D.new()
 		mat.flags_unshaded = true
 		_debug_wirecube_mesh.surface_set_material(0, mat)
 
@@ -560,7 +560,7 @@ func _add_debug_cube(terrain, aabb: AABB):
 	debug_cube.set_mesh(_debug_wirecube_mesh)
 	debug_cube.set_world(world)
 	#aabb.position.y += 0.2*randf()
-	debug_cube.set_transform(Transform(Basis().scaled(aabb.size), aabb.position))
+	debug_cube.set_transform(Transform3D(Basis().scaled(aabb.size), aabb.position))
 
 	_debug_cubes.append(debug_cube)
 
@@ -621,29 +621,29 @@ static func _generate_multimesh(resolution: int, density: float, mesh: Mesh, mul
 			for j in idensity:
 				
 				var pos = Vector3(x, 0, z)
-				pos.x += rand_range(-position_randomness, position_randomness)
-				pos.z += rand_range(-position_randomness, position_randomness)
+				pos.x += randf_range(-position_randomness, position_randomness)
+				pos.z += randf_range(-position_randomness, position_randomness)
 
 				multimesh.set_instance_color(i, Color(1, 1, 1))
 				multimesh.set_instance_transform(i, \
-					Transform(_get_random_instance_basis(scale_randomness), pos))
+					Transform3D(_get_random_instance_basis(scale_randomness), pos))
 				i += 1
 	
 	# Second pass adds the rest
 	for j in random_instance_count:
-		var pos = Vector3(rand_range(0, resolution), 0, rand_range(0, resolution))
+		var pos = Vector3(randf_range(0, resolution), 0, randf_range(0, resolution))
 		multimesh.set_instance_color(i, Color(1, 1, 1))
 		multimesh.set_instance_transform(i, \
-			Transform(_get_random_instance_basis(scale_randomness), pos))
+			Transform3D(_get_random_instance_basis(scale_randomness), pos))
 		i += 1
 
 
 static func _get_random_instance_basis(scale_randomness: float) -> Basis:
-	var sr = rand_range(0, scale_randomness)
+	var sr = randf_range(0, scale_randomness)
 	var s = 1.0 + (sr * sr * sr * sr * sr) * 50.0
 
 	var basis = Basis()
 	basis = basis.scaled(Vector3(1, s, 1))
-	basis = basis.rotated(Vector3(0, 1, 0), rand_range(0, PI))
+	basis = basis.rotated(Vector3(0, 1, 0), randf_range(0, PI))
 	
 	return basis

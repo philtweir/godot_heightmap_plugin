@@ -1,5 +1,5 @@
-tool
-extends WindowDialog
+@tool
+extends Window
 
 const HT_Util = preload("../../util/util.gd")
 const HT_Logger = preload("../../util/logger.gd")
@@ -42,9 +42,9 @@ const _anchor_icon_names = [
 
 signal permanent_change_performed(message)
 
-onready var _resolution_dropdown = $VBoxContainer/GridContainer/ResolutionDropdown
-onready var _stretch_checkbox = $VBoxContainer/GridContainer/StretchCheckBox
-onready var _anchor_control = $VBoxContainer/GridContainer/HBoxContainer/AnchorControl
+@onready var _resolution_dropdown = $VBoxContainer/GridContainer/ResolutionDropdown
+@onready var _stretch_checkbox = $VBoxContainer/GridContainer/StretchCheckBox
+@onready var _anchor_control = $VBoxContainer/GridContainer/HBoxContainer/AnchorControl
 
 const _resolutions = HTerrainData.SUPPORTED_RESOLUTIONS
 
@@ -82,10 +82,10 @@ func _ready():
 		var child = _anchor_control.get_child(i)
 		assert(child is Button)
 		child.toggle_mode = true
-		child.rect_min_size = child.rect_size
+		child.minimum_size = child.size
 		child.icon = null
-		child.connect("pressed", self, "_on_AnchorButton_pressed", [i, x, y])
-		child.group = _anchor_button_group
+		child.connect("pressed", self._on_AnchorButton_pressed, [i, x, y])
+		child.button_group = _anchor_button_group
 		_anchor_buttons[i] = child
 		_anchor_buttons_grid[Vector2(x, y)] = child
 		x += 1
@@ -93,7 +93,7 @@ func _ready():
 			x = 0
 			y += 1
 
-	_anchor_buttons[_selected_anchor].pressed = true
+	_anchor_buttons[_selected_anchor].button_pressed = true
 	# The signal apparently doesn't trigger in this case
 	_on_AnchorButton_pressed(_selected_anchor, 0, 0)
 

@@ -2,7 +2,7 @@
 # Bakes a global albedo map using the same shader the terrain uses,
 # but renders top-down in orthographic mode.
 
-tool
+@tool
 extends Node
 
 const HTerrain = preload("../hterrain.gd")
@@ -18,8 +18,8 @@ signal permanent_change_performed(message)
 var _terrain : HTerrain = null
 var _viewport : Viewport = null
 var _viewport_size := DEFAULT_VIEWPORT_SIZE
-var _plane : MeshInstance = null
-var _camera : Camera = null
+var _plane : MeshInstance3D = null
+var _camera : Camera3D = null
 var _sectors := []
 var _sector_index := 0
 
@@ -67,13 +67,13 @@ func _setup_scene(terrain_size: int):
 	_viewport.render_target_update_mode = Viewport.UPDATE_ALWAYS
 	_viewport.render_target_clear_mode = Viewport.CLEAR_MODE_ALWAYS
 	_viewport.render_target_v_flip = true
-	_viewport.world = World.new()
+	_viewport.world = World3D.new()
 	_viewport.own_world = true
 	_viewport.debug_draw = Viewport.DEBUG_DRAW_UNSHADED
 	
 	var mat := ShaderMaterial.new()
 	
-	_plane = MeshInstance.new()
+	_plane = MeshInstance3D.new()
 	# Make a very small mesh, vertex precision isn't required
 	var plane_res := 4
 	_plane.mesh = \
@@ -81,8 +81,8 @@ func _setup_scene(terrain_size: int):
 	_plane.material_override = mat
 	_viewport.add_child(_plane)
 	
-	_camera = Camera.new()
-	_camera.projection = Camera.PROJECTION_ORTHOGONAL
+	_camera = Camera3D.new()
+	_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	_camera.size = _viewport.size.x
 	_camera.near = 0.1
 	_camera.far = 10.0
@@ -137,7 +137,7 @@ func _setup_pass(sector: Vector2):
 
 func _grab_image(sector: Vector2):
 	var tex := _viewport.get_texture()
-	var src := tex.get_data()
+	var src: Image = tex.get_data()
 	
 	assert(_terrain != null)
 	var data := _terrain.get_data()

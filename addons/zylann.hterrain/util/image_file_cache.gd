@@ -43,7 +43,7 @@ func _init(cache_dir: String):
 			_logger.error("Could not create directory {0}, error {1}" \
 				.format([_cache_dir, err]))
 	_save_thread_running = true 
-	_saving_thread.start(self, "_save_thread_func")
+	_saving_thread.start(self._save_thread_func)
 
 
 # TODO Cannot cleanup the cache in destructor!
@@ -138,14 +138,14 @@ func load_image(id: int) -> Image:
 	var info := _cache_image_info[id] as Dictionary
 	
 	var timeout = 5.0
-	var time_before = OS.get_ticks_msec()
+	var time_before = Time.get_ticks_msec()
 	# We could just grab `image`, because the thread only reads it.
 	# However it's still not safe to do that if we write or even lock it,
 	# so we have to assume it still has ownership of it.
 	while not info.saved:
 		OS.delay_msec(8.0)
 		_logger.debug("Waiting for cached image {0}...".format([id]))
-		if OS.get_ticks_msec() - time_before > timeout:
+		if Time.get_ticks_msec() - time_before > timeout:
 			_logger.error("Could not get image {0} from cache. Something went wrong.".format([id]))
 			return null
 	
@@ -176,7 +176,9 @@ func clear():
 			.format([_cache_dir]))
 		return
 	
-	err = dir.list_dir_begin(true, true)
+	dir.set_include_hidden(true)
+	dir.set_include_navigational(true)
+	err = dir.list_dir_begin()
 	if err != OK:
 		_logger.error("Could not start list_dir_begin in '{0}'".format([_cache_dir]))
 		return

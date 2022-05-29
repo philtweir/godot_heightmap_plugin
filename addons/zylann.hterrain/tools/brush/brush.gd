@@ -1,4 +1,4 @@
-tool
+@tool
 
 # Brush properties (shape, transform, timing and opacity).
 # Other attributes like color, height or texture index are tool-specific,
@@ -140,7 +140,7 @@ static func load_shape_from_image_file(fpath: String, logger, retries = 1) -> Te
 				.format([fpath, HT_Errors.get_message(err)]))
 			return null
 	var tex := ImageTexture.new()
-	tex.create_from_image(im, Texture.FLAG_FILTER)
+	tex.create_from_image(im) # RMV , Texture.FLAG_FILTER
 	return tex
 
 	
@@ -150,11 +150,11 @@ func configure_paint_input(painters: Array, position: Vector2, pressure: float) 
 	assert(len(_shapes) != 0)
 	
 	# DEBUG
-	#pressure = 0.5 + 0.5 * sin(OS.get_ticks_msec() / 200.0)
+	#pressure = 0.5 + 0.5 * sin(Time.get_ticks_msec() / 200.0)
 	
 	if position.distance_to(_prev_position) < _frequency_distance:
 		return false
-	var now = OS.get_ticks_msec()
+	var now = Time.get_ticks_msec()
 	if (now - _prev_time_ms) < _frequency_time_ms:
 		return false
 	_prev_position = position
@@ -162,7 +162,7 @@ func configure_paint_input(painters: Array, position: Vector2, pressure: float) 
 	
 	for painter in painters:
 		if _random_rotation:
-			painter.set_brush_rotation(rand_range(-PI, PI))
+			painter.set_brush_rotation(randf_range(-PI, PI))
 		else:
 			painter.set_brush_rotation(0.0)
 

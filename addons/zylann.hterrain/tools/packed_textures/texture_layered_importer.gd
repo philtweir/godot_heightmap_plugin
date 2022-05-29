@@ -1,4 +1,4 @@
-tool
+@tool
 
 # TODO Godot does not have an API to make custom texture importers easier.
 # So we have to re-implement the entire logic of `ResourceImporterLayeredTexture`.
@@ -234,13 +234,13 @@ static func _save_tex(
 		
 	var f := File.new()
 	var err := f.open(p_to_path, File.WRITE)
-	f.store_8(ord('G'))
-	f.store_8(ord('D'))
+	f.store_8('G'.unicode_at(0))
+	f.store_8('D'.unicode_at(0))
 	if is_3d:
-		f.store_8(ord('3'))
+		f.store_8('3'.unicode_at(0))
 	else:
-		f.store_8(ord('A'))
-	f.store_8(ord('T')) # godot streamable texture
+		f.store_8('A'.unicode_at(0))
+	f.store_8('T'.unicode_at(0)) # godot streamable texture
 	
 	var slice_count := len(p_images)
 
@@ -298,10 +298,10 @@ static func _save_tex(
 					#var data = Image::lossless_packer(image);
 					var data = image.save_png_to_buffer()
 					f.store_32(data.size() + 4)
-					f.store_8(ord('P'))
-					f.store_8(ord('N'))
-					f.store_8(ord('G'))
-					f.store_8(ord(' '))
+					f.store_8('P'.unicode_at(0))
+					f.store_8('N'.unicode_at(0))
+					f.store_8('G'.unicode_at(0))
+					f.store_8(' '.unicode_at(0))
 					f.store_buffer(data)
 
 			COMPRESS_VIDEO_RAM:
@@ -337,5 +337,5 @@ static func _save_tex(
 # And the implementation involves shittons of unexposed code,
 # so we have to fallback on a simplified version
 static func _get_required_mipmap_count(image: Image) -> int:
-	var dim := max(image.get_width(), image.get_height())
+	var dim: int = max(image.get_width(), image.get_height())
 	return int(log(dim) / log(2) + 1)

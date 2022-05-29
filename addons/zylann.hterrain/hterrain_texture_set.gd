@@ -1,4 +1,4 @@
-tool
+@tool
 extends Resource
 
 const MODE_TEXTURES = 0
@@ -87,14 +87,14 @@ func _get_property_list() -> Array:
 	]
 
 
-func _get(key: String):
+func _get(key: StringName):
 	if key == "mode":
 		return _mode
 	if key == "textures":
 		return _textures
 
 
-func _set(key: String, value):
+func _set(key: StringName, value):
 	if key == "mode":
 		# Not using set_mode() here because otherwise it could reset stuff set before...
 		_mode = value
@@ -137,14 +137,14 @@ func set_texture(slot_index: int, ground_texture_type: int, texture: Texture):
 		emit_changed()
 
 
-func get_texture_array(ground_texture_type: int) -> TextureArray:
+func get_texture_array(ground_texture_type: int) -> Texture2DArray:
 	if _mode != MODE_TEXTURE_ARRAYS:
 		return null
 	var texs = _textures[ground_texture_type]
 	return texs[0]
 
 
-func set_texture_array(ground_texture_type: int, texarray: TextureArray):
+func set_texture_array(ground_texture_type: int, texarray: Texture2DArray):
 	assert(_mode == MODE_TEXTURE_ARRAYS)
 	var texs = _textures[ground_texture_type]
 	if texs[0] != texarray:
@@ -229,7 +229,7 @@ func emit_changed():
 #	
 #	if terrain.is_using_texture_array():
 #		for type in TYPE_COUNT:
-#			var tex : TextureArray = terrain.get_ground_texture_array(type)
+#			var tex : Texture2DArray = terrain.get_ground_texture_array(type)
 #			textures[type] = [tex]
 #		_mode = MODE_TEXTURE_ARRAYS
 #		

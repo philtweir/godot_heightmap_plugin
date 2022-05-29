@@ -2,7 +2,7 @@
 # Passes can have different shaders and re-use what was drawn by a previous pass.
 # TODO I'd like to make such a system working as a graph of passes for more possibilities.
 
-tool
+@tool
 extends Node
 
 const HT_Util = preload("res://addons/zylann.hterrain/util/util.gd")
@@ -18,9 +18,9 @@ signal output_generated(image, metadata)
 signal completed
 
 var _passes := []
-var _resolution := Vector2(512, 512)
+var _resolution := Vector2i(512, 512)
 var _output_padding := [0, 0, 0, 0]
-var _viewport : Viewport = null
+var _viewport : SubViewport = null
 var _ci : TextureRect = null
 var _dummy_texture : Texture
 var _running := false
@@ -40,11 +40,11 @@ func _ready():
 	assert(_viewport == null)
 	assert(_ci == null)
 
-	_viewport = Viewport.new()
-	_viewport.own_world = true
-	_viewport.world = World.new()
-	_viewport.render_target_v_flip = true
-	_viewport.render_target_update_mode = Viewport.UPDATE_DISABLED
+	_viewport = SubViewport.new()
+	_viewport.own_world_3d = true
+	_viewport.world_3d = World3D.new()
+	# _viewport.render_target_v_flip = true
+	_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	add_child(_viewport)
 	
 	_dummy_texture = load(DUMMY_TEXTURE_PATH)
@@ -52,7 +52,7 @@ func _ready():
 		_logger.error(str("Failed to load dummy texture ", DUMMY_TEXTURE_PATH))
 
 	_ci = TextureRect.new()
-	_ci.expand = true
+	_ci.stretch_mode = TextureRect.STRETCH_SCALE
 	_ci.texture = _dummy_texture
 	_viewport.add_child(_ci)
 	
@@ -86,7 +86,7 @@ func add_output(meta):
 # In tiled rendering, this is the resolution of one tile.
 # The internal viewport may be larger if some passes need more room,
 # and the resulting images might include some of these pixels if output padding is used.
-func set_resolution(res: Vector2):
+func set_resolution(res: Vector2i):
 	assert(not _running)
 	_resolution = res
 
@@ -104,7 +104,9 @@ func set_output_padding(p: Array):
 
 
 func run():
-	assert(len(_passes) > 0)
+	# RMV assert(len(_passes) > 0)
+	if len(_passes) == 0:
+		return
 	
 	if _running:
 		_rerun = true
@@ -121,24 +123,24 @@ func run():
 	_running_passes = passes
 
 	# Pad pixels according to largest padding
-	var largest_padding := 0
+	var largest_padding: int = 0
 	for p in passes:
 		if p.padding > largest_padding:
 			largest_padding = p.padding
 	for v in _output_padding:
 		if v > largest_padding:
 			largest_padding = v
-	var padded_size := _resolution + 2 * Vector2(largest_padding, largest_padding)
+	var padded_size := _resolution + 2 * Vector2i(largest_padding, largest_padding)
 	
 #	_uv_offset = Vector2( \
 #		float(largest_padding) / padded_size.x,
 #		float(largest_padding) / padded_size.y)
 
-	_ci.rect_size = padded_size
+	_ci.size = padded_size
 
 	_viewport.size = padded_size
-	_viewport.render_target_update_mode = Viewport.UPDATE_ALWAYS
-	_viewport.render_target_clear_mode = Viewport.CLEAR_MODE_ONLY_NEXT_FRAME
+	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	_viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_ONCE
 
 	_running_pass_index = 0
 	_running_iteration = 0
@@ -168,7 +170,7 @@ func _process(delta: float):
 			_rerun = false
 			run()
 		else:
-			_viewport.render_target_update_mode = Viewport.UPDATE_DISABLED
+			_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 			set_process(false)
 			return
 	
@@ -225,12 +227,12 @@ func _setup_pass(p: HT_TextureGeneratorPass):
 		_ci.material = null
 
 	if p.clear:
-		_viewport.render_target_clear_mode = Viewport.CLEAR_MODE_ONLY_NEXT_FRAME
+		_viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_ONCE
 
 
 func _create_output_image(metadata):
 	var tex := _viewport.get_texture()
-	var src := tex.get_data()
+	var src: Image = tex.get_data()
 	
 	# Pick the center of the image
 	var subrect := Rect2( \

@@ -1,41 +1,41 @@
-tool
-extends Control
+@tool
+extends Window
 
 const HTerrainTextureSet = preload("../../../hterrain_texture_set.gd")
 const HT_EditorUtil = preload("../../util/editor_util.gd")
 const HT_Util = preload("../../../util/util.gd")
 const HT_Logger = preload("../../../util/logger.gd")
 
-const HT_ColorShader = preload("../display_color.shader")
-const HT_ColorSliceShader = preload("../display_color_slice.shader")
-const HT_AlphaShader = preload("../display_alpha.shader")
-const HT_AlphaSliceShader = preload("../display_alpha_slice.shader")
+const HT_ColorShader = preload("../display_color.gdshader")
+const HT_ColorSliceShader = preload("../display_color_slice.gdshader")
+const HT_AlphaShader = preload("../display_alpha.gdshader")
+const HT_AlphaSliceShader = preload("../display_alpha_slice.gdshader")
 # TODO Can't preload because it causes the plugin to fail loading if assets aren't imported
 #const HT_EmptyTexture = preload("../../icons/empty.png")
 const EMPTY_TEXTURE_PATH = "res://addons/zylann.hterrain/tools/icons/empty.png"
 
 signal import_selected
 
-onready var _slots_list = $VB/HS/VB/SlotsList
-onready var _albedo_preview = $VB/HS/VB2/GC/AlbedoPreview
-onready var _bump_preview = $VB/HS/VB2/GC/BumpPreview
-onready var _normal_preview = $VB/HS/VB2/GC/NormalPreview
-onready var _roughness_preview = $VB/HS/VB2/GC/RoughnessPreview
-onready var _load_albedo_button = $VB/HS/VB2/GC/LoadAlbedo
-onready var _load_normal_button = $VB/HS/VB2/GC/LoadNormal
-onready var _clear_albedo_button = $VB/HS/VB2/GC/ClearAlbedo
-onready var _clear_normal_button = $VB/HS/VB2/GC/ClearNormal
-onready var _mode_selector = $VB/HS/VB2/GC2/ModeSelector
-onready var _add_slot_button = $VB/HS/VB/HB/AddSlot
-onready var _remove_slot_button = $VB/HS/VB/HB/RemoveSlot
+@onready var _slots_list = $VB/HS/VB/SlotsList
+@onready var _albedo_preview = $VB/HS/VB2/GC/AlbedoPreview
+@onready var _bump_preview = $VB/HS/VB2/GC/BumpPreview
+@onready var _normal_preview = $VB/HS/VB2/GC/NormalPreview
+@onready var _roughness_preview = $VB/HS/VB2/GC/RoughnessPreview
+@onready var _load_albedo_button = $VB/HS/VB2/GC/LoadAlbedo
+@onready var _load_normal_button = $VB/HS/VB2/GC/LoadNormal
+@onready var _clear_albedo_button = $VB/HS/VB2/GC/ClearAlbedo
+@onready var _clear_normal_button = $VB/HS/VB2/GC/ClearNormal
+@onready var _mode_selector = $VB/HS/VB2/GC2/ModeSelector
+@onready var _add_slot_button = $VB/HS/VB/HB/AddSlot
+@onready var _remove_slot_button = $VB/HS/VB/HB/RemoveSlot
 
 var _texture_set : HTerrainTextureSet
 var _undo_redo : UndoRedo
 
 var _mode_confirmation_dialog : ConfirmationDialog
 var _delete_slot_confirmation_dialog : ConfirmationDialog
-var _load_texture_dialog : WindowDialog
-var _load_texture_array_dialog : WindowDialog
+var _load_texture_dialog : Window
+var _load_texture_array_dialog : Window
 var _load_texture_type := -1
 
 var _logger = HT_Logger.get_for(self)
@@ -51,22 +51,22 @@ func _ready():
 
 func setup_dialogs(parent: Node):
 	var d = HT_EditorUtil.create_open_texture_dialog()
-	d.connect("file_selected", self, "_on_LoadTextureDialog_file_selected")
+	d.connect("file_selected", self._on_LoadTextureDialog_file_selected)
 	_load_texture_dialog = d
 	parent.add_child(d)
 
 	d = HT_EditorUtil.create_open_texture_array_dialog()
-	d.connect("file_selected", self, "_on_LoadTextureArrayDialog_file_selected")
+	d.connect("file_selected", self._on_LoadTextureArrayDialog_file_selected)
 	_load_texture_array_dialog = d
 	parent.add_child(d)
 	
 	d = ConfirmationDialog.new()
-	d.connect("confirmed", self, "_on_ModeConfirmationDialog_confirmed")
+	d.connect("confirmed", self._on_ModeConfirmationDialog_confirmed)
 	# This is ridiculous.
 	# See https://github.com/godotengine/godot/issues/17460
-#	d.connect("modal_closed", self, "_on_ModeConfirmationDialog_cancelled")
-#	d.get_close_button().connect("pressed", self, "_on_ModeConfirmationDialog_cancelled")
-#	d.get_cancel().connect("pressed", self, "_on_ModeConfirmationDialog_cancelled")
+#	d.connect("modal_closed", self._on_ModeConfirmationDialog_cancelled)
+#	d.get_close_button().connect("pressed", self._on_ModeConfirmationDialog_cancelled)
+#	d.get_cancel().connect("pressed", self._on_ModeConfirmationDialog_cancelled)
 	_mode_confirmation_dialog = d
 	parent.add_child(d)
 
@@ -75,7 +75,7 @@ func _notification(what: int):
 	if HT_Util.is_in_edited_scene(self):
 		return
 	
-	if what == NOTIFICATION_EXIT_TREE:
+	if what == NOTIFICATION_EXIT_TREE: # RMV
 		# Have to check for null in all of them,
 		# because otherwise it breaks in the scene editor...
 		if _load_texture_dialog != null:
@@ -84,7 +84,7 @@ func _notification(what: int):
 			_load_texture_array_dialog.queue_free()
 	
 	if what == NOTIFICATION_VISIBILITY_CHANGED:
-		if not is_visible_in_tree():
+		if not visible:
 			set_texture_set(null)
 
 
@@ -97,12 +97,12 @@ func set_texture_set(texture_set: HTerrainTextureSet):
 		return
 	
 	if _texture_set != null:
-		_texture_set.disconnect("changed", self, "_on_texture_set_changed")
+		_texture_set.disconnect("changed", self._on_texture_set_changed)
 
 	_texture_set = texture_set
 	
 	if _texture_set != null:
-		_texture_set.connect("changed", self, "_on_texture_set_changed")
+		_texture_set.connect("changed", self._on_texture_set_changed)
 		_update_ui_from_data()
 
 
@@ -353,7 +353,7 @@ func _set_texture_action(slot_index: int, texture: Texture, type: int):
 	_undo_redo.commit_action()
 
 
-func _set_texture_array_action(slot_index: int, texture_array: TextureArray, type: int):
+func _set_texture_array_action(slot_index: int, texture_array: Texture2DArray, type: int):
 	var prev_texture_array = _texture_set.get_texture_array(type)
 	
 	_undo_redo.create_action("HTerrainTextureSet: load texture array")
@@ -429,13 +429,13 @@ func _on_ModeSelector_item_selected(index: int):
 		
 	else:
 		if _texture_set.get_mode() == HTerrainTextureSet.MODE_TEXTURES:
-			_mode_confirmation_dialog.window_title = "Switch to TextureArrays"
+			_mode_confirmation_dialog.title = "Switch to TextureArrays"
 			_mode_confirmation_dialog.dialog_text = \
 				"This will unload all textures currently setup. Do you want to continue?"
 			_mode_confirmation_dialog.popup_centered()
 		
 		else:
-			_mode_confirmation_dialog.window_title = "Switch to Textures"
+			_mode_confirmation_dialog.title = "Switch to Textures"
 			_mode_confirmation_dialog.dialog_text = \
 				"This will unload all textures currently setup. Do you want to continue?"
 			_mode_confirmation_dialog.popup_centered()

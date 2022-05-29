@@ -11,13 +11,13 @@ class HT_LoggerBase:
 	func warn(msg: String):
 		push_warning("{0}: {1}".format([_context, msg]))
 	
-	func error(msg: String):
-		push_error("{0}: {1}".format([_context, msg]))
+	func error(msg: String, add_msg: String = ""):
+		push_error("{0}: {1}{2}".format([_context, msg, add_msg]))
 
 
 class HT_LoggerVerbose extends HT_LoggerBase:
-	func _init(p_context: String).(p_context):
-		pass
+	func _init(p_context: String):
+		super(p_context)
 		
 	func debug(msg: String):
 		print(_context, ": ", msg)

@@ -6,19 +6,19 @@
 ;   [section] ; section goes between []
 ;   param=value ; assign values to parameters
 
-config_version=4
+config_version=5
 
-_global_script_classes=[ {
+_global_script_classes=[{
 "base": "ResourceFormatLoader",
-"class": "HTerrainDataLoader",
-"language": "GDScript",
+"class": &"HTerrainDataLoader",
+"language": &"GDScript",
 "path": "res://addons/zylann.hterrain/hterrain_resource_loader.gd"
 }, {
 "base": "ResourceFormatSaver",
-"class": "HTerrainDataSaver",
-"language": "GDScript",
+"class": &"HTerrainDataSaver",
+"language": &"GDScript",
 "path": "res://addons/zylann.hterrain/hterrain_resource_saver.gd"
-} ]
+}]
 _global_script_class_icons={
 "HTerrainDataLoader": "",
 "HTerrainDataSaver": ""
@@ -29,6 +29,7 @@ _global_script_class_icons={
 config/name="Heightmap Terrain"
 name="Heightmap GDNative"
 icon="res://icon.png"
+config/features=PackedStringArray("4.0")
 
 [display]
 
@@ -36,11 +37,11 @@ stretch/mode="viewport"
 
 [editor_plugins]
 
-enabled=PoolStringArray( "zylann.hterrain" )
+enabled=PackedStringArray("res://addons/zylann.hterrain/plugin.cfg")
 
 [gdnative]
 
-singletons=[  ]
+singletons=[]
 
 [memory]
 
@@ -48,4 +49,4 @@ multithread/thread_rid_pool_prealloc=60
 
 [rendering]
 
-viewport/default_clear_color=Color( 0.407806, 0.628906, 0.618542, 1 )
+viewport/default_clear_color=Color(0.407806, 0.628906, 0.618542, 1)

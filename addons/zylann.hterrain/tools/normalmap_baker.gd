@@ -3,7 +3,7 @@
 # It uses the heightmap texture to change the normalmap image, which is then uploaded like an edit.
 # This is probably not a nice method GPU-wise, but it's way faster than GDScript.
 
-tool
+@tool
 extends Node
 
 const HTerrainData = preload("../hterrain_data.gd")
@@ -28,14 +28,14 @@ func _init():
 	_viewport.render_target_update_mode = Viewport.UPDATE_DISABLED
 	_viewport.render_target_clear_mode = Viewport.CLEAR_MODE_ALWAYS
 	_viewport.render_target_v_flip = true
-	_viewport.world = World.new()
+	_viewport.world = World3D.new()
 	_viewport.own_world = true
 	add_child(_viewport)
 	
 	var mat = ShaderMaterial.new()
 	mat.shader = load("res://addons/zylann.hterrain/tools/bump2normal_tex.shader")
 	
-	_ci = Sprite.new()
+	_ci = Sprite3D.new()
 	_ci.centered = false
 	_ci.material = mat
 	_viewport.add_child(_ci)

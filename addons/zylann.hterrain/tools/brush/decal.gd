@@ -1,4 +1,4 @@
-tool
+@tool
 # Shows a cursor on top of the terrain to preview where the brush will paint
 
 const HT_DirectMeshInstance = preload("../../util/direct_mesh_instance.gd")
@@ -15,7 +15,7 @@ var _terrain = null
 
 
 func _init():
-	_material.shader = load("res://addons/zylann.hterrain/tools/brush/decal.shader")
+	_material.shader = load("res://addons/zylann.hterrain/tools/brush/decal.gdshader")
 	_mesh_instance = HT_DirectMeshInstance.new()
 	_mesh_instance.set_material(_material)
 	
@@ -87,7 +87,7 @@ func set_position(p_local_pos: Vector3):
 		_mesh.custom_aabb = aabb
 		#_debug_mesh.size = aabb.size
 	
-	var trans = Transform(Basis(), p_local_pos)
+	var trans = Transform3D(Basis(), p_local_pos)
 	var terrain_gt = _terrain.get_internal_transform()
 	trans = terrain_gt * trans
 	_mesh_instance.set_transform(trans)

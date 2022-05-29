@@ -1,4 +1,4 @@
-tool
+@tool
 
 const HT_Logger = preload("../../util/logger.gd")
 const HT_Errors = preload("../../util/errors.gd")

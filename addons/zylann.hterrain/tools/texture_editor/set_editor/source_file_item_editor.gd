@@ -1,4 +1,4 @@
-tool
+@tool
 extends Control
 
 # TODO Can't preload because it causes the plugin to fail loading if assets aren't imported
@@ -9,10 +9,10 @@ signal load_pressed
 signal clear_pressed
 
 
-onready var _label = $Label
-onready var _texture_rect = $TextureRect
+@onready var _label = $Label
+@onready var _texture_rect = $TextureRect
 
-onready var _buttons = [
+@onready var _buttons = [
 	$LoadButton,
 	$ClearButton
 ]

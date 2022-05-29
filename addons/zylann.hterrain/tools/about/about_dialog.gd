@@ -1,5 +1,5 @@
-tool
-extends WindowDialog
+@tool
+extends Window
 
 const HT_Util = preload("../../util/util.gd")
 const HT_Logger = preload("../../util/logger.gd")
@@ -8,7 +8,7 @@ const HT_Errors = preload("../../util/errors.gd")
 const PLUGIN_CFG_PATH = "res://addons/zylann.hterrain/plugin.cfg"
 
 
-onready var _about_rich_text_label = $VB/HB2/TC/About
+@onready var _about_rich_text_label = $VB/HB2/TC/About
 
 var _logger = HT_Logger.get_for(self)
 
@@ -25,7 +25,7 @@ func _ready():
 		return
 	var version = plugin_cfg.get_value("plugin", "version", "--.--.--")
 	
-	_about_rich_text_label.bbcode_text = _about_rich_text_label.bbcode_text \
+	_about_rich_text_label.text = _about_rich_text_label.text \
 		.format({"version": version})
 
 

@@ -1,5 +1,5 @@
-tool
-extends WindowDialog
+@tool
+extends Window
 
 const HTerrain = preload("../../hterrain.gd")
 const HTerrainData = preload("../../hterrain_data.gd")
@@ -15,10 +15,10 @@ const MAX_VIEWPORT_RESOLUTION = 512
 
 signal progress_notified(info) # { "progress": real, "message": string, "finished": bool }
 
-onready var _inspector_container = $VBoxContainer/Editor/Settings
-onready var _inspector = $VBoxContainer/Editor/Settings/Inspector
-onready var _preview = $VBoxContainer/Editor/Preview/TerrainPreview
-onready var _progress_bar = $VBoxContainer/Editor/Preview/ProgressBar
+@onready var _inspector_container = $VBoxContainer/Editor/Settings
+@onready var _inspector = $VBoxContainer/Editor/Settings/Inspector
+@onready var _preview = $VBoxContainer/Editor/Preview/TerrainPreview
+@onready var _progress_bar = $VBoxContainer/Editor/Preview/ProgressBar
 
 var _dummy_texture = load("res://addons/zylann.hterrain/tools/icons/empty.png")
 var _terrain : HTerrain = null
@@ -51,27 +51,27 @@ func _ready():
 			"type": TYPE_VECTOR2
 		},
 		"base_height": { 
-			"type": TYPE_REAL,
+			"type": TYPE_FLOAT,
 			"range": {"min": -500.0, "max": 500.0, "step": 0.1 },
 			"default_value": -50.0
 		},
 		"height_range": {
-			"type": TYPE_REAL,
+			"type": TYPE_FLOAT,
 			"range": {"min": 0.0, "max": 2000.0, "step": 0.1 },
 			"default_value": 150.0
 		},
 		"scale": {
-			"type": TYPE_REAL,
+			"type": TYPE_FLOAT,
 			"range": {"min": 1.0, "max": 1000.0, "step": 1.0},
 			"default_value": 100.0
 		},
 		"roughness": {
-			"type": TYPE_REAL,
+			"type": TYPE_FLOAT,
 			"range": {"min": 0.0, "max": 1.0, "step": 0.01},
 			"default_value": 0.4
 		},
 		"curve": {
-			"type": TYPE_REAL,
+			"type": TYPE_FLOAT,
 			"range": {"min": 1.0, "max": 10.0, "step": 0.1},
 			"default_value": 1.0
 		},
@@ -86,12 +86,12 @@ func _ready():
 			"default_value": 0
 		},
 		"erosion_weight": {
-			"type": TYPE_REAL,
+			"type": TYPE_FLOAT,
 			"range": { "min": 0.0, "max": 1.0 },
 			"default_value": 0.5
 		},
 		"erosion_slope_factor": {
-			"type": TYPE_REAL,
+			"type": TYPE_FLOAT,
 			"range": { "min": 0.0, "max": 1.0 },
 			"default_value": 0.0
 		},
@@ -104,27 +104,27 @@ func _ready():
 			"default_value": false
 		},
 		"dilation": {
-			"type": TYPE_REAL,
+			"type": TYPE_FLOAT,
 			"range": { "min": 0.0, "max": 1.0 },
 			"default_value": 0.0
 		},
 		"island_weight": {
-			"type": TYPE_REAL,
+			"type": TYPE_FLOAT,
 			"range": { "min": 0.0, "max": 1.0, "step": 0.01 },
 			"default_value": 0.0
 		},
 		"island_sharpness": {
-			"type": TYPE_REAL,
+			"type": TYPE_FLOAT,
 			"range": { "min": 0.0, "max": 1.0, "step": 0.01 },
 			"default_value": 0.0
 		},
 		"island_height_ratio": {
-			"type": TYPE_REAL,
+			"type": TYPE_FLOAT,
 			"range": { "min": -1.0, "max": 1.0, "step": 0.01 },
 			"default_value": -1.0
 		},
 		"island_shape": {
-			"type": TYPE_REAL,
+			"type": TYPE_FLOAT,
 			"range": { "min": 0.0, "max": 1.0, "step": 0.01 },
 			"default_value": 0.0
 		},
@@ -148,15 +148,15 @@ func _ready():
 	# TODO I wonder if it's not better to let the generator shaders work in pixels
 	# instead of NDC, rather than putting a padding system there
 	_generator.set_output_padding([0, 1, 0, 1])
-	_generator.connect("output_generated", self, "_on_TextureGenerator_output_generated")
-	_generator.connect("completed", self, "_on_TextureGenerator_completed")
-	_generator.connect("progress_reported", self, "_on_TextureGenerator_progress_reported")
+	_generator.connect("output_generated", self._on_TextureGenerator_output_generated)
+	_generator.connect("completed", self._on_TextureGenerator_completed)
+	_generator.connect("progress_reported", self._on_TextureGenerator_progress_reported)
 	add_child(_generator)
 
 
 func apply_dpi_scale(dpi_scale: float):
-	rect_min_size *= dpi_scale
-	_inspector_container.rect_min_size *= dpi_scale
+	min_size *= dpi_scale
+	_inspector_container.minimum_size *= dpi_scale
 
 
 # TEST
@@ -200,9 +200,9 @@ func set_undo_redo(ur: UndoRedo):
 
 func _notification(what: int):
 	match what:
-		NOTIFICATION_VISIBILITY_CHANGED:
+		NOTIFICATION_VISIBILITY_CHANGED, NOTIFICATION_READY:
 			# We don't want any of this to run in an edited scene
-			if HT_Util.is_in_edited_scene(self):
+			if HT_Util.is_in_edited_scene(self) or not _inspector:
 				return
 
 			if visible:
@@ -244,8 +244,8 @@ func _update_generator(preview: bool):
 
 	# Get preview scale and sectors to generate.
 	# Allowing null terrain to make it testable.
-	var terrain_data := _terrain.get_data()
-	if _terrain != null and terrain_data != null:
+	if _terrain != null and _terrain.get_data() != null:
+		var terrain_data := _terrain.get_data()
 		terrain_size = terrain_data.get_resolution()
 		
 		if _inspector.get_value("additive_heightmap"):
@@ -380,7 +380,7 @@ func _on_Inspector_property_changed(key, value):
 
 
 func _on_TerrainPreview_dragged(relative, button_mask):
-	if button_mask & BUTTON_MASK_LEFT:
+	if button_mask & MOUSE_BUTTON_MASK_LEFT:
 		var offset = _inspector.get_value("offset")
 		offset += relative
 		_inspector.set_value("offset", offset)

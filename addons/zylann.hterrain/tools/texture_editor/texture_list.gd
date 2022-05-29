@@ -5,7 +5,7 @@
 # and items cannot have individual shaders.
 # I could create new textures just for that but it would be expensive.
 
-tool
+@tool
 extends ScrollContainer
 
 const HT_TextureListItemScene = preload("./texture_list_item.tscn")
@@ -14,7 +14,7 @@ const HT_TextureListItem = preload("./texture_list_item.gd")
 signal item_selected(index)
 signal item_activated(index)
 
-onready var _container = $Container
+@onready var _container = $Container
 
 
 var _selected_item := -1
@@ -33,7 +33,7 @@ var _selected_item := -1
 
 # Note: the texture can be a TextureArray, which does not inherit Texture
 func add_item(text: String, texture: Resource, texture_layer: int = 0):
-	var item = HT_TextureListItemScene.instance()
+	var item = HT_TextureListItemScene.instantiate()
 	_container.add_child(item)
 	item.set_text(text)
 	item.set_texture(texture, texture_layer)

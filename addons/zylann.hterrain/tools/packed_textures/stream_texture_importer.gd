@@ -1,4 +1,4 @@
-tool
+@tool
 
 # TODO Godot does not have an API to make custom texture importers easier.
 # So we have to re-implement the entire logic of `ResourceImporterTexture`.
@@ -125,9 +125,9 @@ static func import(
 		#Android, GLES 2.x
 
 		var ok_on_pc := false
-		var is_hdr := \
+		var is_hdr: bool = \
 			(image.get_format() >= Image.FORMAT_RF and image.get_format() <= Image.FORMAT_RGBE9995)
-		var is_ldr := \
+		var is_ldr: bool = \
 			(image.get_format() >= Image.FORMAT_L8 and image.get_format() <= Image.FORMAT_RGBA5551)
 		var can_bptc : bool = ProjectSettings.get("rendering/vram_compression/import_bptc")
 		var can_s3tc : bool = ProjectSettings.get("rendering/vram_compression/import_s3tc")
@@ -300,10 +300,10 @@ static func _save_stex(
 		return HT_Result.new(false, "Could not open file {0}:\n{1}" \
 			.format([p_fpath, HT_Errors.get_message(err)]))
 
-	f.store_8(ord('G'))
-	f.store_8(ord('D'))
-	f.store_8(ord('S'))
-	f.store_8(ord('T')) # godot streamable texture
+	f.store_8('G'.unicode_at(0))
+	f.store_8('D'.unicode_at(0))
+	f.store_8('S'.unicode_at(0))
+	f.store_8('T'.unicode_at(0)) # godot streamable texture
 
 	var resize_to_po2 := false
 	
@@ -362,10 +362,10 @@ static func _save_stex(
 				# This is actually PNG...
 				var data = image.save_png_to_buffer()
 				f.store_32(data.size() + 4)
-				f.store_8(ord('P'))
-				f.store_8(ord('N'))
-				f.store_8(ord('G'))
-				f.store_8(ord(' '))
+				f.store_8('P'.unicode_at(0))
+				f.store_8('N'.unicode_at(0))
+				f.store_8('G'.unicode_at(0))
+				f.store_8(' '.unicode_at(0))
 				f.store_buffer(data)
 
 		COMPRESS_LOSSY:
@@ -391,7 +391,7 @@ static func _save_stex(
 				var csource := Image.COMPRESS_SOURCE_GENERIC
 				if p_force_normal:
 					csource = Image.COMPRESS_SOURCE_NORMAL
-				elif p_texture_flags & VisualServer.TEXTURE_FLAG_CONVERT_TO_LINEAR:
+				elif p_texture_flags & RenderingServer.TEXTURE_FLAG_CONVERT_TO_LINEAR:
 					csource = Image.COMPRESS_SOURCE_SRGB
 
 				image.compress(p_vram_compression, csource, p_lossy_quality)
@@ -428,7 +428,7 @@ static func _save_stex(
 # And the implementation involves shittons of unexposed code,
 # so we have to fallback on a simplified version
 static func _get_required_mipmap_count(image: Image) -> int:
-	var dim := max(image.get_width(), image.get_height())
+	var dim: int = max(image.get_width(), image.get_height())
 	return int(log(dim) / log(2) + 1)
 
 

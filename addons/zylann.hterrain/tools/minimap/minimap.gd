@@ -1,10 +1,10 @@
-tool
+@tool
 extends Control
 
 const HT_Util = preload("../../util/util.gd")
 const HTerrainData = preload("../../hterrain_data.gd")
 
-const HT_MinimapShader = preload("./minimap_normal.shader")
+const HT_MinimapShader = preload("./minimap_normal.gdshader")
 # TODO Can't preload because it causes the plugin to fail loading if assets aren't imported
 #const HT_WhiteTexture = preload("../icons/white.png")
 const WHITE_TEXTURE_PATH = "res://addons/zylann.hterrain/tools/icons/white.png"
@@ -12,13 +12,13 @@ const WHITE_TEXTURE_PATH = "res://addons/zylann.hterrain/tools/icons/white.png"
 const MODE_QUADTREE = 0
 const MODE_NORMAL = 1
 
-onready var _popup_menu = $PopupMenu
-onready var _color_rect = $ColorRect
-onready var _overlay = $Overlay
+@onready var _popup_menu = $PopupMenu
+@onready var _color_rect = $ColorRect
+@onready var _overlay = $Overlay
 
 var _terrain = null
 var _mode := MODE_NORMAL
-var _camera_transform := Transform()
+var _camera_transform := Transform3D()
 
 
 func _ready():
@@ -37,7 +37,7 @@ func set_terrain(node):
 		set_process(_terrain != null)
 
 
-func set_camera_transform(ct: Transform):
+func set_camera_transform(ct: Transform3D):
 	if _camera_transform == ct:
 		return
 	if _terrain == null:
@@ -62,10 +62,10 @@ func _gui_input(event: InputEvent):
 	if event is InputEventMouseButton:
 		if event.pressed:
 			match event.button_index:
-				BUTTON_RIGHT:
+				MOUSE_BUTTON_RIGHT:
 					_popup_menu.rect_position = get_global_mouse_position()
 					_popup_menu.popup()
-				BUTTON_LEFT:
+				MOUSE_BUTTON_LEFT:
 					# Teleport there?
 					pass
 
@@ -128,7 +128,7 @@ func _draw():
 			# Fit drawing to rect
 			
 			var size = 1 << (lod_count - 1)
-			var vsize = rect_size
+			var vsize = size
 			draw_set_transform(Vector2(0, 0), 0, Vector2(vsize.x / size, vsize.y / size))
 	
 			_terrain._edit_debug_draw(self)

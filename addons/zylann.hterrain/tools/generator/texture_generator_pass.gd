@@ -11,7 +11,7 @@ var texture = null
 # Which shader to use
 var shader = null
 # Parameters for the shader
-var params = null
+var params = []
 # How many pixels to pad the viewport on all edges, in case neighboring matters.
 # Outputs won't have that padding, but can pick part of it in case output padding is used.
 var padding = 0

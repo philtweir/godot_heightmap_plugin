@@ -6,16 +6,16 @@ const HTerrainData = preload("../../hterrain_data.gd")
 const HT_Logger = preload("../../util/logger.gd")
 const HT_Brush = preload("./brush.gd")
 
-const HT_RaiseShader = preload("./shaders/raise.shader")
-const HT_SmoothShader = preload("./shaders/smooth.shader")
-const HT_LevelShader = preload("./shaders/level.shader")
-const HT_FlattenShader = preload("./shaders/flatten.shader")
-const HT_ErodeShader = preload("./shaders/erode.shader")
-const HT_Splat4Shader = preload("./shaders/splat4.shader")
-const HT_Splat16Shader = preload("./shaders/splat16.shader")
-const HT_SplatIndexedShader = preload("./shaders/splat_indexed.shader")
-const HT_ColorShader = preload("./shaders/color.shader")
-const HT_AlphaShader = preload("./shaders/alpha.shader")
+const HT_RaiseShader = preload("./shaders/raise.gdshader")
+const HT_SmoothShader = preload("./shaders/smooth.gdshader")
+const HT_LevelShader = preload("./shaders/level.gdshader")
+const HT_FlattenShader = preload("./shaders/flatten.gdshader")
+const HT_ErodeShader = preload("./shaders/erode.gdshader")
+const HT_Splat4Shader = preload("./shaders/splat4.gdshader")
+const HT_Splat16Shader = preload("./shaders/splat16.gdshader")
+const HT_SplatIndexedShader = preload("./shaders/splat_indexed.gdshader")
+const HT_ColorShader = preload("./shaders/color.gdshader")
+const HT_AlphaShader = preload("./shaders/alpha.gdshader")
 
 const MODE_RAISE = 0
 const MODE_LOWER = 1
@@ -61,7 +61,7 @@ func _init():
 		# The name is just for debugging
 		p.set_name(str("Painter", i))
 		#p.set_brush_size(_brush_size)
-		p.connect("texture_region_changed", self, "_on_painter_texture_region_changed", [i])
+		p.connect("texture_region_changed", self._on_painter_texture_region_changed, [i])
 		add_child(p)
 		_painters.append(p)
 

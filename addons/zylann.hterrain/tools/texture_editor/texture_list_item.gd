@@ -1,4 +1,4 @@
-tool
+@tool
 extends PanelContainer
 # Had to use PanelContainer, because due to variable font sizes in the editor,
 # the contents of the VBoxContainer can vary in size, and so in height.
@@ -6,13 +6,13 @@ extends PanelContainer
 # In such cases, the hierarchy must be made of containers that grow based on their children.
 
 const HT_ColorMaterial = preload("./display_color_material.tres")
-const HT_ColorSliceShader = preload("./display_color_slice.shader")
+const HT_ColorSliceShader = preload("./display_color_slice.gdshader")
 # TODO Can't preload because it causes the plugin to fail loading if assets aren't imported
 #const HT_DummyTexture = preload("../icons/empty.png")
 const DUMMY_TEXTURE_PATH = "res://addons/zylann.hterrain/tools/icons/empty.png"
 
-onready var _texture_rect = $VB/TextureRect
-onready var _label = $VB/Label
+@onready var _texture_rect = $VB/TextureRect
+@onready var _label = $VB/Label
 
 
 var _selected := false
@@ -23,7 +23,7 @@ func set_text(text: String):
 
 
 func set_texture(texture: Resource, texture_layer: int):
-	if texture is TextureArray:
+	if texture is Texture2DArray:
 		var mat = _texture_rect.material
 		if mat == null or not (mat is ShaderMaterial):
 			mat = ShaderMaterial.new()
@@ -40,7 +40,7 @@ func set_texture(texture: Resource, texture_layer: int):
 func _gui_input(event: InputEvent):
 	if event is InputEventMouseButton:
 		if event.pressed:
-			if event.button_index == BUTTON_LEFT:
+			if event.button_index == MOUSE_BUTTON_LEFT:
 				grab_focus()
 				set_selected(true, true)
 				if event.doubleclick:
@@ -65,8 +65,8 @@ func set_selected(selected: bool, notify: bool):
 func _draw():
 	var color : Color
 	if _selected:
-		color = get_color("accent_color", "Editor")
+		color = get_theme_color("accent_color", "Editor")
 	else:
 		color = Color(0.0, 0.0, 0.0, 0.5)
 	# Draw background
-	draw_rect(Rect2(Vector2(), rect_size), color)
+	draw_rect(Rect2(Vector2(), size), color)

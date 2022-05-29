@@ -1,4 +1,4 @@
-tool
+@tool
 
 const HT_Errors = preload("./errors.gd")
 
@@ -49,7 +49,7 @@ static func clamp_int(x: int, a: int, b: int) -> int:
 
 # CubeMesh doesn't have a wireframe option
 static func create_wirecube_mesh(color = Color(1,1,1)) -> Mesh:
-	var positions := PoolVector3Array([
+	var positions := PackedVector3Array([
 		Vector3(0, 0, 0),
 		Vector3(1, 0, 0),
 		Vector3(1, 0, 1),
@@ -59,11 +59,11 @@ static func create_wirecube_mesh(color = Color(1,1,1)) -> Mesh:
 		Vector3(1, 1, 1),
 		Vector3(0, 1, 1),
 	])
-	var colors := PoolColorArray([
+	var colors := PackedColorArray([
 		color, color, color, color,
 		color, color, color, color,
 	])
-	var indices := PoolIntArray([
+	var indices := PackedInt32Array([
 		0, 1,
 		1, 2,
 		2, 3,
@@ -161,16 +161,16 @@ static func get_cropped_image(src: Image, width: int, height: int,
 	var im = Image.new()
 	im.create(width, height, false, src.get_format())
 	if fill_color != null:
-		im.fill(fill_color)
+		var fc: Color = fill_color
+		im.fill(fc)
 	var p = get_cropped_image_params(
 		src.get_width(), src.get_height(), width, height, anchor)
 	im.blit_rect(src, p.src_rect, p.dst_pos)
 	return im
 
 
-static func get_cropped_image_params(src_w: int, src_h: int, dst_w: int, dst_h: int,
-	 anchor: Vector2) -> Dictionary:
-		
+static func get_cropped_image_params(src_w: int, src_h: int, dst_w: int, dst_h: int, anchor: Vector2) -> Dictionary:
+
 	var rel_anchor := (anchor + Vector2(1, 1)) / 2.0
 
 	var dst_x := (dst_w - src_w) * rel_anchor.x
@@ -232,7 +232,7 @@ static func get_cropped_image_params(src_w: int, src_h: int, dst_w: int, dst_h: 
 
 # Generic way to apply editor scale to a plugin UI scene.
 # It is slower than doing it manually on specific controls.
-static func apply_dpi_scale(root: Control, dpi_scale: float):
+static func apply_dpi_scale(root: Node, dpi_scale: float):
 	if dpi_scale == 1.0:
 		return
 	var to_process := [root]
@@ -242,15 +242,15 @@ static func apply_dpi_scale(root: Control, dpi_scale: float):
 		if node is Viewport:
 			continue
 		if node is Control:
-			if node.rect_min_size != Vector2(0, 0):
-				node.rect_min_size *= dpi_scale
+			if node.minimum_size != Vector2(0, 0):
+				node.minimum_size *= dpi_scale
 			var parent = node.get_parent()
 			if parent != null:
 				if not (parent is Container):
-					node.margin_bottom *= dpi_scale
-					node.margin_left *= dpi_scale
-					node.margin_top *= dpi_scale
-					node.margin_right *= dpi_scale
+					node.offset_bottom *= dpi_scale
+					node.offset_left *= dpi_scale
+					node.offset_top *= dpi_scale
+					node.offset_right *= dpi_scale
 		for i in node.get_child_count():
 			to_process.append(node.get_child(i))
 
@@ -336,7 +336,7 @@ class HT_GridRaytraceResult2D:
 # btHeightfieldTerrainShape.cpp#L418
 #
 static func grid_raytrace_2d(ray_origin: Vector2, ray_direction: Vector2, 
-	quad_predicate: FuncRef, max_distance: float) -> HT_GridRaytraceResult2D:
+	quad_predicate: Callable, max_distance: float) -> HT_GridRaytraceResult2D:
 	
 	if max_distance < 0.0001:
 		# Consider the ray is too small to hit anything
@@ -434,7 +434,7 @@ static func grid_raytrace_2d(ray_origin: Vector2, ray_direction: Vector2,
 		if param > max_distance:
 			param = max_distance
 			# quad coordinates, enter param, exit/end param
-			if quad_predicate.call_func(prev_x, prev_y, prev_param, param):
+			if quad_predicate.call(prev_x, prev_y, prev_param, param):
 				var res := HT_GridRaytraceResult2D.new()
 				res.hit_cell_pos = Vector2(x, y)
 				res.prev_cell_pos = Vector2(prev_x, prev_y)
@@ -442,7 +442,7 @@ static func grid_raytrace_2d(ray_origin: Vector2, ray_direction: Vector2,
 			else:
 				break
 			
-		elif quad_predicate.call_func(prev_x, prev_y, prev_param, param):
+		elif quad_predicate.call(prev_x, prev_y, prev_param, param):
 			var res := HT_GridRaytraceResult2D.new()
 			res.hit_cell_pos = Vector2(x, y)
 			res.prev_cell_pos = Vector2(prev_x, prev_y)
@@ -469,10 +469,10 @@ static func get_segment_clipped_by_rect(rect: Rect2,
 	var c := Vector2(rect.position.x, rect.end.y)
 	var d := rect.end
 	
-	var ab = Geometry.segment_intersects_segment_2d(segment_begin, segment_end, a, b)
-	var cd = Geometry.segment_intersects_segment_2d(segment_begin, segment_end, c, d)
-	var ac = Geometry.segment_intersects_segment_2d(segment_begin, segment_end, a, c)
-	var bd = Geometry.segment_intersects_segment_2d(segment_begin, segment_end, b, d)
+	var ab = Geometry2D.segment_intersects_segment(segment_begin, segment_end, a, b)
+	var cd = Geometry2D.segment_intersects_segment(segment_begin, segment_end, c, d)
+	var ac = Geometry2D.segment_intersects_segment(segment_begin, segment_end, a, c)
+	var bd = Geometry2D.segment_intersects_segment(segment_begin, segment_end, b, d)
 	
 	var hits = []
 	if ab != null:

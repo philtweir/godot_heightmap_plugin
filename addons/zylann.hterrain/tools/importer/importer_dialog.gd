@@ -1,5 +1,5 @@
-tool
-extends WindowDialog
+@tool
+extends Window
 
 const HT_Util = preload("../../util/util.gd")
 const HTerrain = preload("../../hterrain.gd")
@@ -10,12 +10,13 @@ const HT_XYZFormat = preload("../../util/xyz_format.gd")
 
 signal permanent_change_performed(message)
 
-onready var _inspector = $VBoxContainer/Inspector
-onready var _errors_label = $VBoxContainer/ColorRect/ScrollContainer/VBoxContainer/Errors
-onready var _warnings_label = $VBoxContainer/ColorRect/ScrollContainer/VBoxContainer/Warnings
+@onready var _inspector = $VBoxContainer/Inspector
+@onready var _errors_label = $VBoxContainer/ColorRect/ScrollContainer/VBoxContainer/Errors
+@onready var _warnings_label = $VBoxContainer/ColorRect/ScrollContainer/VBoxContainer/Warnings
 
 const RAW_LITTLE_ENDIAN = 0
 const RAW_BIG_ENDIAN = 1
+const HT_LoggerBase = HT_Logger.HT_LoggerBase
 
 var _terrain : HTerrain = null
 var _logger = HT_Logger.get_for(self)
@@ -35,12 +36,12 @@ func _ready():
 			"enabled": false
 		},
 		"min_height": {
-			"type": TYPE_REAL,
+			"type": TYPE_FLOAT,
 			"range": {"min": -2000.0, "max": 2000.0, "step": 1.0},
 			"default_value": 0.0
 		},
 		"max_height": {
-			"type": TYPE_REAL,
+			"type": TYPE_FLOAT,
 			"range": {"min": -2000.0, "max": 2000.0, "step": 1.0},
 			"default_value": 400.0
 		},
@@ -66,16 +67,17 @@ func set_terrain(terrain: HTerrain):
 
 
 func _notification(what: int):
-	if what == NOTIFICATION_VISIBILITY_CHANGED:
-		if visible and is_inside_tree():
-			_clear_feedback()
+	match what:
+		NOTIFICATION_VISIBILITY_CHANGED, NOTIFICATION_READY:
+			if _errors_label and visible and is_inside_tree():
+				_clear_feedback()
 
 
 static func _format_feedbacks(feed):
 	var a = []
 	for s in feed:
 		a.append("- " + s)
-	return PoolStringArray(a).join("\n")
+	return String("\n").join(PackedStringArray(a))
 
 
 func _clear_feedback():
@@ -209,7 +211,7 @@ func _validate_form():
 
 
 static func _check_map_size(path: String, map_name: String, heightmap_size: int, res: Dictionary, 
-	logger: HT_Logger):
+	logger: HT_LoggerBase):
 	
 	var size = _load_image_size(path, logger)
 	if size.has("error"):
@@ -228,7 +230,7 @@ static func _check_map_size(path: String, map_name: String, heightmap_size: int,
 				map_name, " will be cropped.")
 
 
-static func _load_image_size(path: String, logger: HT_Logger) -> Dictionary:
+static func _load_image_size(path: String, logger: HT_LoggerBase) -> Dictionary:
 	var ext := path.get_extension().to_lower()
 
 	if ext == "png" or ext == "exr":
@@ -251,7 +253,7 @@ static func _load_image_size(path: String, logger: HT_Logger) -> Dictionary:
 
 		# Assume the raw data is square in 16-bit format,
 		# so its size is function of file length
-		var flen := f.get_len()
+		var flen: int = f.get_len()
 		f.close()
 		var size = HT_Util.integer_square_root(flen / 2)
 		if size == -1:

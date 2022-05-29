@@ -8,7 +8,7 @@
 # Example: when painting a heightmap, it would be doable to output height in R, normalmap in GB, and
 # then separate channels in two images at the end.
 
-tool
+@tool
 extends Node
 
 const HT_Logger = preload("../../util/logger.gd")
@@ -60,9 +60,9 @@ const _supported_formats = [
 #        Size of actual brush, scaled/rotated, modifies source image.
 #        Assigned texture is the brush texture, src image is a shader param
 
-var _viewport : Viewport
-var _viewport_bg_sprite : Sprite
-var _viewport_brush_sprite : Sprite
+var _viewport : SubViewport
+var _viewport_bg_sprite : Sprite2D
+var _viewport_brush_sprite : Sprite2D
 var _brush_size := 32
 var _brush_scale := 1.0
 var _brush_position := Vector2()
@@ -82,12 +82,12 @@ var _logger = HT_Logger.get_for(self)
 
 
 func _init():
-	_viewport = Viewport.new()
+	_viewport = SubViewport.new()
 	_viewport.size = Vector2(_brush_size, _brush_size)
-	_viewport.render_target_update_mode = Viewport.UPDATE_ONCE
-	_viewport.render_target_v_flip = true
-	_viewport.render_target_clear_mode = Viewport.CLEAR_MODE_ONLY_NEXT_FRAME
-	_viewport.hdr = false
+	_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+	# RMV _viewport.render_target_v_flip = true
+	_viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_ONCE
+	# RMV _viewport.hdr = false
 	_viewport.transparent_bg = true
 	# Apparently HDR doesn't work if this is set to 2D... so let's waste a depth buffer :/
 	#_viewport.usage = Viewport.USAGE_2D
@@ -96,12 +96,12 @@ func _init():
 	# There is no "blend_disabled" option on standard CanvasItemMaterial...
 	var no_blend_material := ShaderMaterial.new()
 	no_blend_material.shader = HT_NoBlendShader
-	_viewport_bg_sprite = Sprite.new()
+	_viewport_bg_sprite = Sprite2D.new()
 	_viewport_bg_sprite.centered = false
 	_viewport_bg_sprite.material = no_blend_material
 	_viewport.add_child(_viewport_bg_sprite)
 	
-	_viewport_brush_sprite = Sprite.new()
+	_viewport_brush_sprite = Sprite2D.new()
 	_viewport_brush_sprite.centered = true
 	_viewport_brush_sprite.material = _brush_material
 	_viewport_brush_sprite.position = _viewport.size / 2.0
@@ -121,8 +121,8 @@ func set_image(image: Image, texture: ImageTexture):
 	_texture = texture
 	_viewport_bg_sprite.texture = _texture
 	_brush_material.set_shader_param(SHADER_PARAM_SRC_TEXTURE, _texture)
-	if image != null:
-		_viewport.hdr = image.get_format() in _hdr_formats
+	# RMV if image != null:
+	# RMV 	_viewport.hdr = image.get_format() in _hdr_formats
 	#print("PAINTER VIEWPORT HDR: ", _viewport.hdr)
 
 
@@ -203,9 +203,9 @@ func paint_input(center_pos: Vector2):
 		_viewport_brush_sprite.position = _viewport.size / 2.0
 
 	# Need to floor the position in case the brush has an odd size
-	var brush_pos := (center_pos - _viewport.size * 0.5).round()
-	_viewport.render_target_update_mode = Viewport.UPDATE_ONCE
-	_viewport.render_target_clear_mode = Viewport.CLEAR_MODE_ONLY_NEXT_FRAME
+	var brush_pos: Vector2 = (center_pos - _viewport.size * 0.5).round()
+	_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+	_viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_ONCE
 	_viewport_bg_sprite.position = -brush_pos
 	_brush_position = brush_pos
 	_cmd_paint = true
@@ -256,23 +256,28 @@ func _process(delta: float):
 		_pending_paint_render = false
 	
 		#print("Paint result at frame ", Engine.get_frames_drawn())
-		var data := _viewport.get_texture().get_data()
+		var data: Image = _viewport.get_texture().get_data()
 		data.convert(_image.get_format())
 		
 		var brush_pos = _last_brush_position
 		
 		var dst_x : int = clamp(brush_pos.x, 0, _texture.get_width())
 		var dst_y : int = clamp(brush_pos.y, 0, _texture.get_height())
+		var dst := Vector2(dst_x, dst_y)
 		
 		var src_x : int = max(-brush_pos.x, 0)
 		var src_y : int = max(-brush_pos.y, 0)
 		var src_w : int = min(max(_viewport.size.x - src_x, 0), _texture.get_width() - dst_x)
 		var src_h : int = min(max(_viewport.size.y - src_y, 0), _texture.get_height() - dst_y)
+		var src := Rect2(src_x, src_y, src_w, src_h)
 		
 		if src_w != 0 and src_h != 0:
 			_mark_modified_chunks(dst_x, dst_y, src_w, src_h)
-			VisualServer.texture_set_data_partial(
-				_texture.get_rid(), data, src_x, src_y, src_w, src_h, dst_x, dst_y, 0, 0)
+			var im: Image = RenderingServer.texture_2d_get(_texture.get_rid())
+			im.blit_rect(data, src, dst) # RMV
+			RenderingServer.texture_2d_update(_texture.get_rid(), im, 0)
+			#VisualServer.texture_set_data_partial(
+			#	_texture.get_rid(), data, src_x, src_y, src_w, src_h, dst_x, dst_y, 0, 0)
 			emit_signal("texture_region_changed", Rect2(dst_x, dst_y, src_w, src_h))
 	
 	# Input is handled just before process, so we still have to wait till next frame
@@ -298,7 +303,7 @@ func _mark_modified_chunks(bx: int, by: int, bw: int, bh: int):
 
 
 func _commit_modified_chunks() -> Dictionary:
-	var time_before := OS.get_ticks_msec()
+	var time_before := Time.get_ticks_msec()
 	
 	var cs := UNDO_CHUNK_SIZE
 	var chunks_positions := []
@@ -308,7 +313,7 @@ func _commit_modified_chunks() -> Dictionary:
 	#_logger.debug("About to commit ", len(_modified_chunks), " chunks")
 	
 	# TODO get_data_partial() would be nice...
-	var final_image := _texture.get_data()
+	var final_image: Image = _texture.get_data()
 	for cpos in _modified_chunks:
 		var cx : int = cpos.x
 		var cy : int = cpos.y
@@ -320,7 +325,7 @@ func _commit_modified_chunks() -> Dictionary:
 		
 		var rect := Rect2(x, y, w, h)
 		var initial_data := _image.get_rect(rect)
-		var final_data := final_image.get_rect(rect)
+		var final_data: Image = final_image.get_rect(rect)
 		
 		chunks_positions.append(cpos)
 		chunks_initial_data.append(initial_data)
@@ -333,7 +338,7 @@ func _commit_modified_chunks() -> Dictionary:
 	
 	_modified_chunks.clear()
 	
-	var time_spent := OS.get_ticks_msec() - time_before
+	var time_spent := Time.get_ticks_msec() - time_before
 	_logger.debug("Spent {0} ms to commit paint operation".format([time_spent]))
 	
 	return {
