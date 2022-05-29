@@ -13,7 +13,7 @@ static func generate_image(sources: Dictionary, resolution: int, logger) -> HT_R
 	var image := Image.new()
 	image.create(resolution, resolution, true, Image.FORMAT_RGBA8)
 	
-	image.lock()
+	# RMV image.lock()
 
 	var flip_normalmap_y := false
 	
@@ -43,7 +43,7 @@ static func generate_image(sources: Dictionary, resolution: int, logger) -> HT_R
 			src_image.decompress()
 		
 		src_image.resize(image.get_width(), image.get_height())
-		src_image.lock()
+		# RMV src_image.lock()
 		
 		# TODO Support more channel configurations
 		if key == "rgb":
@@ -67,9 +67,9 @@ static func generate_image(sources: Dictionary, resolution: int, logger) -> HT_R
 			image.blit_rect(src_image, 
 				Rect2(0, 0, image.get_width(), image.get_height()), Vector2())
 
-		src_image.unlock()
+		# RMV src_image.unlock()
 
-	image.unlock()
+	# RMV image.unlock()
 	
 	if sources.has("normalmap_flip_y") and sources.normalmap_flip_y:
 		_flip_normalmap_y(image)
@@ -78,11 +78,11 @@ static func generate_image(sources: Dictionary, resolution: int, logger) -> HT_R
 
 
 static func _flip_normalmap_y(image: Image):
-	image.lock()
+	# RMV image.lock()
 	for y in image.get_height():
 		for x in image.get_width():
 			var col := image.get_pixel(x, y)
 			col.g = 1.0 - col.g
 			image.set_pixel(x, y, col)
-	image.unlock()
+	# RMV image.unlock()
 

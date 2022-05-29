@@ -26,7 +26,7 @@ func _get_recognized_extensions() -> PackedStringArray:
 	return PackedStringArray(["packed_texarr"])
 
 
-func get_save_extension() -> String:
+func _get_save_extension() -> String:
 	return "texarr"
 
 
@@ -34,15 +34,20 @@ func _get_resource_type() -> String:
 	return RESOURCE_TYPE
 
 
-func get_preset_count() -> int:
+func _get_preset_count() -> int:
 	return 1
 
 
-func get_preset_name(preset_index: int) -> String:
+func _get_preset_name(preset_index: int) -> String:
 	return ""
 
+func _get_import_order() -> int:
+	return 0
 
-func get_import_options(preset_index: int) -> Array:
+func _get_priority() -> float:
+	return 1.0
+
+func _get_import_options(path: String, preset_index: int) -> Array:
 	return [
 		{
 			"name": "compress/mode",
@@ -71,11 +76,11 @@ func get_import_options(preset_index: int) -> Array:
 	]
 
 
-func get_option_visibility(option: String, options: Dictionary) -> bool:
+func _get_option_visibility(option: String, option_name: StringName, options: Dictionary) -> bool:
 	return true
 
 
-func import(p_source_path: String, p_save_path: String, options: Dictionary, 
+func _import(p_source_path: String, p_save_path: String, options: Dictionary, 
 	r_platform_variants: Array, r_gen_files: Array) -> int:
 
 	var result := _import_real(p_source_path, p_save_path, options, r_platform_variants, r_gen_files)
@@ -86,12 +91,6 @@ func import(p_source_path: String, p_save_path: String, options: Dictionary,
 	
 	var code : int = result.value
 	return code
-
-
-func _import(p_source_path: String, p_save_path: String, options: Dictionary, 
-	r_platform_variants: Array, r_gen_files: Array) -> int:
-	return _import_real(p_source_path, p_save_path, options, r_platform_variants, 
-		r_gen_files).value
 
 
 func _import_real(p_source_path: String, p_save_path: String, options: Dictionary, 

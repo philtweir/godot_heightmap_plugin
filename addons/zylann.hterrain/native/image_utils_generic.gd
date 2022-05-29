@@ -14,7 +14,7 @@ func get_red_range(im: Image, rect: Rect2) -> Vector2:
 	var max_x := min_x + int(rect.size.x)
 	var max_y := min_y + int(rect.size.y)
 
-	im.lock()
+	# RMV im.lock()
 
 	var min_height := im.get_pixel(min_x, min_y).r
 	var max_height := min_height
@@ -27,7 +27,7 @@ func get_red_range(im: Image, rect: Rect2) -> Vector2:
 			elif h > max_height:
 				max_height = h
 
-	im.unlock()
+	# RMV im.unlock()
 	
 	return Vector2(min_height, max_height)
 
@@ -41,13 +41,13 @@ func get_red_sum(im: Image, rect: Rect2) -> float:
 
 	var sum := 0.0
 	
-	im.lock()
+	# RMV im.lock()
 
 	for y in range(min_y, max_y):
 		for x in range(min_x, max_x):
 			sum += im.get_pixel(x, y).r
 
-	im.unlock()
+	# RMV im.unlock()
 	
 	return sum
 
@@ -68,8 +68,8 @@ func get_red_sum_weighted(im: Image, brush: Image, pos: Vector2, factor: float) 
 
 	var sum = 0.0
 
-	im.lock()
-	brush.lock()
+	# RMV im.lock()
+	# RMV brush.lock()
 
 	for y in range(min_y, max_y):
 		var by = y - min_noclamp_y
@@ -80,8 +80,8 @@ func get_red_sum_weighted(im: Image, brush: Image, pos: Vector2, factor: float) 
 			var shape_value = brush.get_pixel(bx, by).r
 			sum += im.get_pixel(x, y).r * shape_value * factor
 
-	im.lock()
-	brush.unlock()
+	# RMV im.lock()
+	# RMV brush.unlock()
 	
 	return sum
 
@@ -99,8 +99,8 @@ func add_red_brush(im: Image, brush: Image, pos: Vector2, factor: float):
 	max_x = HT_Util.clamp_int(max_x, 0, im.get_width())
 	max_y = HT_Util.clamp_int(max_y, 0, im.get_height())
 
-	im.lock()
-	brush.lock()
+	# RMV im.lock()
+	# RMV brush.lock()
 
 	for y in range(min_y, max_y):
 		var by = y - min_noclamp_y
@@ -112,8 +112,8 @@ func add_red_brush(im: Image, brush: Image, pos: Vector2, factor: float):
 			var r = im.get_pixel(x, y).r + shape_value * factor
 			im.set_pixel(x, y, Color(r, r, r))
 
-	im.lock()
-	brush.unlock()
+	# RMV im.lock()
+	# RMV brush.unlock()
 
 
 func lerp_channel_brush(im: Image, brush: Image, pos: Vector2, 
@@ -164,8 +164,8 @@ func lerp_color_brush(im: Image, brush: Image, pos: Vector2,
 	max_x = HT_Util.clamp_int(max_x, 0, im.get_width())
 	max_y = HT_Util.clamp_int(max_y, 0, im.get_height())
 
-	im.lock()
-	brush.lock()
+	# RMV im.lock()
+	# RMV brush.lock()
 
 	for y in range(min_y, max_y):
 		var by = y - min_noclamp_y
@@ -177,8 +177,8 @@ func lerp_color_brush(im: Image, brush: Image, pos: Vector2,
 			var c = im.get_pixel(x, y).lerp(target_value, factor * shape_value)
 			im.set_pixel(x, y, c)
 
-	im.lock()
-	brush.unlock()
+	# RMV im.lock()
+	# RMV brush.unlock()
 
 
 func generate_gaussian_brush(im: Image) -> float:
@@ -186,7 +186,7 @@ func generate_gaussian_brush(im: Image) -> float:
 	var center := Vector2(im.get_width() / 2, im.get_height() / 2)
 	var radius: float = min(im.get_width(), im.get_height()) / 2.0
 
-	im.lock()
+	# RMV im.lock()
 
 	for y in im.get_height():
 		for x in im.get_width():
@@ -195,7 +195,7 @@ func generate_gaussian_brush(im: Image) -> float:
 			im.set_pixel(x, y, Color(v, v, v))
 			sum += v;
 
-	im.unlock()
+	# RMV im.unlock()
 	return sum
 
 
@@ -212,8 +212,8 @@ func blur_red_brush(im: Image, brush: Image, pos: Vector2, factor: float):
 	if buffer_width != buffer.get_width() or buffer_height != buffer.get_height():
 		buffer.create(buffer_width, buffer_height, false, Image.FORMAT_RF)
 	
-	im.lock()
-	buffer.lock()
+	# RMV im.lock()
+	# RMV buffer.lock()
 	
 	var min_x := int(pos.x) - 1
 	var min_y := int(pos.y) - 1
@@ -243,7 +243,7 @@ func blur_red_brush(im: Image, brush: Image, pos: Vector2, factor: float):
 	max_x = HT_Util.clamp_int(max_x, 0, im.get_width())
 	max_y = HT_Util.clamp_int(max_y, 0, im.get_height())
 	
-	brush.lock()
+	# RMV brush.lock()
 	
 	# Apply blur
 	for y in range(min_y, max_y):
@@ -265,9 +265,9 @@ func blur_red_brush(im: Image, brush: Image, pos: Vector2, factor: float):
 
 			im.set_pixel(x, y, Color(p, p, p))
 	
-	im.unlock()
-	buffer.unlock()
-	brush.unlock()
+	# RMV im.unlock()
+	# RMV buffer.unlock()
+	# RMV brush.unlock()
 
 
 func paint_indexed_splat(index_map: Image, weight_map: Image, brush: Image, pos: Vector2, \
@@ -291,9 +291,9 @@ func paint_indexed_splat(index_map: Image, weight_map: Image, brush: Image, pos:
 	var cm := Color(-1, -1, -1)
 	cm[ci] = 1
 
-	index_map.lock()
-	weight_map.lock()
-	brush.lock()
+	# RMV index_map.lock()
+	# RMV weight_map.lock()
+	# RMV brush.lock()
 
 	for y in range(min_y, max_y):
 		var by := y - min_noclamp_y
@@ -363,6 +363,6 @@ func paint_indexed_splat(index_map: Image, weight_map: Image, brush: Image, pos:
 			index_map.set_pixel(x, y, i)
 			weight_map.set_pixel(x, y, w)
 
-	index_map.lock()
-	weight_map.lock()
-	brush.unlock()
+	# RMV index_map.lock()
+	# RMV weight_map.lock()
+	# RMV brush.unlock()

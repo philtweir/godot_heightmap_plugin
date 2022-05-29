@@ -349,9 +349,9 @@ func get_height_at(x: int, y: int) -> float:
 	var im = get_image(CHANNEL_HEIGHT)
 	assert(im != null)
 
-	im.lock();
+	# RMV im.lock();
 	var h = HT_Util.get_pixel_clamped(im, x, y).r;
-	im.unlock();
+	# RMV im.unlock();
 	return h;
 
 
@@ -370,12 +370,12 @@ func get_interpolated_height_at(pos: Vector3) -> float:
 	var xf := pos.x - x0
 	var yf := pos.z - y0
 
-	im.lock()
+	# RMV im.lock()
 	var h00 = HT_Util.get_pixel_clamped(im, x0, y0).r
 	var h10 = HT_Util.get_pixel_clamped(im, x0 + 1, y0).r
 	var h01 = HT_Util.get_pixel_clamped(im, x0, y0 + 1).r
 	var h11 = HT_Util.get_pixel_clamped(im, x0 + 1, y0 + 1).r
-	im.unlock()
+	# RMV im.unlock()
 
 	# Bilinear filter
 	var h = lerp(lerp(h00, h10, xf), lerp(h01, h11, xf), yf)
@@ -404,7 +404,7 @@ func get_heights_region(x0: int, y0: int, w: int, h: int) -> PackedFloat32Array:
 
 	heights.resize(area)
 
-	im.lock()
+	# RMV im.lock()
 
 	var i := 0
 	for y in range(min_y, max_y):
@@ -412,7 +412,7 @@ func get_heights_region(x0: int, y0: int, w: int, h: int) -> PackedFloat32Array:
 			heights[i] = im.get_pixel(x, y).r
 			i += 1
 
-	im.unlock()
+	# RMV im.unlock()
 
 	return heights
 
@@ -790,9 +790,9 @@ func get_point_aabb(cell_x: int, cell_y: int) -> Vector2:
 	if cy >= _chunked_vertical_bounds.get_height():
 		cy = _chunked_vertical_bounds.get_height() - 1
 
-	_chunked_vertical_bounds.lock()
+	# RMV _chunked_vertical_bounds.lock()
 	var b := _chunked_vertical_bounds.get_pixel(cx, cy)
-	_chunked_vertical_bounds.unlock()
+	# RMV _chunked_vertical_bounds.unlock()
 	return Vector2(b.r, b.g)
 
 
@@ -819,7 +819,7 @@ func get_region_aabb(origin_in_cells_x: int, origin_in_cells_y: int, \
 	cmax_x = HT_Util.clamp_int(cmax_x, 0, _chunked_vertical_bounds.get_width())
 	cmax_y = HT_Util.clamp_int(cmax_y, 0, _chunked_vertical_bounds.get_height())
 
-	_chunked_vertical_bounds.lock()
+	# RMV _chunked_vertical_bounds.lock()
 	
 	var min_height := _chunked_vertical_bounds.get_pixel(cmin_x, cmin_y).r
 	var max_height = min_height
@@ -830,7 +830,7 @@ func get_region_aabb(origin_in_cells_x: int, origin_in_cells_y: int, \
 			min_height = min(b.r, min_height)
 			max_height = max(b.g, max_height)
 	
-	_chunked_vertical_bounds.unlock()
+	# RMV _chunked_vertical_bounds.unlock()
 
 	var aabb = AABB()
 	aabb.position = Vector3(origin_in_cells_x, min_height, origin_in_cells_y)
@@ -875,7 +875,7 @@ func _update_vertical_bounds(origin_in_cells_x: int, origin_in_cells_y: int, \
 	var chunk_size_x := VERTICAL_BOUNDS_CHUNK_SIZE + 1
 	var chunk_size_y := VERTICAL_BOUNDS_CHUNK_SIZE + 1
 	
-	_chunked_vertical_bounds.lock()
+	# RMV _chunked_vertical_bounds.lock()
 
 	for y in range(cmin_y, cmax_y):
 		var pmin_y := y * VERTICAL_BOUNDS_CHUNK_SIZE
@@ -885,7 +885,7 @@ func _update_vertical_bounds(origin_in_cells_x: int, origin_in_cells_y: int, \
 			var b = _compute_vertical_bounds_at(pmin_x, pmin_y, chunk_size_x, chunk_size_y)
 			_chunked_vertical_bounds.set_pixel(x, y, Color(b.x, b.y, 0))
 
-	_chunked_vertical_bounds.unlock()
+	# RMV _chunked_vertical_bounds.unlock()
 
 
 func _compute_vertical_bounds_at(
@@ -952,9 +952,9 @@ func _load_metadata(path: String):
 	var text = f.get_as_text()
 	f.close()
 	var json = JSON.new()
-	var res = json.parse(text)
-	assert(res.error == OK)
-	_deserialize_metadata(res.result)
+	var error = json.parse(text)
+	assert(error == OK)
+	_deserialize_metadata(json.get_data())
 
 
 func _save_metadata(path: String):
@@ -1188,7 +1188,7 @@ func _load_map(dir: String, map_type: int, index: int) -> bool:
 
 		map.texture = tex
 
-		if Engine.editor_hint:
+		if Engine.is_editor_hint():
 			if must_load_image_in_editor:
 				# But in the editor we want textures to be editable,
 				# so we have to automatically load the data also in RAM
@@ -1339,9 +1339,7 @@ func _import_heightmap(fpath: String, min_y: int, max_y: int, big_endian: bool) 
 		var height = HT_Util.min_int(im.get_height(), src_image.get_height())
 
 		_logger.debug("Converting to internal format...")
-
-		im.lock()
-		src_image.lock()
+		# RMV image lock/unlock have been removed in Godot 4
 
 		# Convert to internal format (from RGBA8 to RH16) with range scaling
 		for y in range(0, width):
@@ -1349,9 +1347,6 @@ func _import_heightmap(fpath: String, min_y: int, max_y: int, big_endian: bool) 
 				var gs := src_image.get_pixel(x, y).r
 				var h := min_y + hrange * gs
 				im.set_pixel(x, y, Color(h, 0, 0))
-
-		src_image.unlock()
-		im.unlock()
 	
 	elif ext == "exr":
 		var src_image := Image.new()
@@ -1421,7 +1416,7 @@ func _import_heightmap(fpath: String, min_y: int, max_y: int, big_endian: bool) 
 
 		_logger.debug("Converting to internal format...")
 
-		im.lock()
+		# RMV im.lock()
 
 		var rw := HT_Util.min_int(res, file_res)
 		var rh := HT_Util.min_int(res, file_res)
@@ -1437,7 +1432,7 @@ func _import_heightmap(fpath: String, min_y: int, max_y: int, big_endian: bool) 
 			for x in range(rw, file_res):
 				f.get_16()
 
-		im.unlock()
+		# RMV im.unlock()
 
 	elif ext == "xyz":
 		var f := File.new()
@@ -1640,8 +1635,8 @@ func cell_raycast(ray_origin: Vector3, ray_direction: Vector3, max_distance: flo
 	ctx.broad_param_2d_to_3d = ctx.cell_param_2d_to_3d * VERTICAL_BOUNDS_CHUNK_SIZE
 	#ctx.dbg = dbg
 
-	heightmap.lock()
-	_chunked_vertical_bounds.lock()
+	# RMV heightmap.lock()
+	# RMV _chunked_vertical_bounds.lock()
 
 	# Broad phase through cached vertical bound chunks
 	var broad_ray_origin = clipped_segment_2d[0] / VERTICAL_BOUNDS_CHUNK_SIZE
@@ -1650,8 +1645,8 @@ func cell_raycast(ray_origin: Vector3, ray_direction: Vector3, max_distance: flo
 	var hit_bp = HT_Util.grid_raytrace_2d(broad_ray_origin, ray_direction_2d, 
 		ctx.broad_cb, broad_max_distance)
 
-	heightmap.unlock()
-	_chunked_vertical_bounds.unlock()
+	# RMV heightmap.unlock()
+	# RMV _chunked_vertical_bounds.unlock()
 
 	if hit_bp == null:
 		# No hit
