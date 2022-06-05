@@ -27,7 +27,7 @@ func _get_recognized_extensions() -> PackedStringArray:
 
 
 func _get_save_extension() -> String:
-	return "stex"
+	return "ctex"
 
 
 func _get_resource_type() -> String:
@@ -52,7 +52,7 @@ func _get_import_options(path: String, preset_index: int) -> Array:
 	return [
 		{
 			"name": "compress/mode",
-			"default_value": HT_StreamTextureImporter.COMPRESS_VIDEO_RAM,
+			"default_value": HT_StreamTextureImporter.COMPRESS_VRAM_COMPRESSED,
 			"property_hint": PROPERTY_HINT_ENUM,
 			"hint_string": HT_StreamTextureImporter.COMPRESS_HINT_STRING
 		},

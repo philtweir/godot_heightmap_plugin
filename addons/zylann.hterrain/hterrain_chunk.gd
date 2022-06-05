@@ -33,7 +33,7 @@ func _init(p_parent, p_cell_x: int, p_cell_y: int, p_material: Material):
 	if p_material != null:
 		vs.instance_geometry_set_material_override(_mesh_instance, p_material.get_rid())
 
-	var world = p_parent.get_world()
+	var world = p_parent.get_world_3d()
 	if world != null:
 		vs.instance_set_scenario(_mesh_instance, world.get_scenario())
 

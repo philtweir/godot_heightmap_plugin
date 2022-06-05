@@ -68,7 +68,7 @@ void vertex() {
 		
 		// Fade alpha with distance
 		vec3 wpos = (MODEL_MATRIX * vec4(VERTEX, 1)).xyz;
-		float dr = distance(wpos, CAMERA_MATRIX[3].xyz) / u_view_distance;
+		float dr = distance(wpos, INV_VIEW_MATRIX[3].xyz) / u_view_distance;
 		COLOR.a = clamp(1.0 - dr * dr * dr, 0.0, 1.0);
 
 		// When using billboards,
@@ -83,7 +83,7 @@ void vertex() {
 
 void fragment() {
 	NORMAL = (INV_VIEW_MATRIX * (MODEL_MATRIX * vec4(v_normal, 0.0))).xyz;
-	ALPHA_SCISSOR = 0.5;
+	ALPHA_SCISSOR_THRESHOLD = 0.5;
 	ROUGHNESS = 1.0;
 
 	vec4 col = texture(u_albedo_alpha, UV);

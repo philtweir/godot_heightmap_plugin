@@ -16,7 +16,7 @@ signal progress_notified(info)
 signal permanent_change_performed(message)
 
 var _terrain : HTerrain = null
-var _viewport : Viewport = null
+var _viewport : SubViewport = null
 var _viewport_size := DEFAULT_VIEWPORT_SIZE
 var _plane : MeshInstance3D = null
 var _camera : Camera3D = null
@@ -62,14 +62,14 @@ func _setup_scene(terrain_size: int):
 	while _viewport_size > terrain_size:
 		_viewport_size /= 2
 
-	_viewport = Viewport.new()
+	_viewport = SubViewport.new()
 	_viewport.size = Vector2(_viewport_size + 1, _viewport_size + 1)
-	_viewport.render_target_update_mode = Viewport.UPDATE_ALWAYS
-	_viewport.render_target_clear_mode = Viewport.CLEAR_MODE_ALWAYS
+	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	_viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_ALWAYS
 	_viewport.render_target_v_flip = true
 	_viewport.world = World3D.new()
 	_viewport.own_world = true
-	_viewport.debug_draw = Viewport.DEBUG_DRAW_UNSHADED
+	_viewport.debug_draw = SubViewport.DEBUG_DRAW_UNSHADED
 	
 	var mat := ShaderMaterial.new()
 	

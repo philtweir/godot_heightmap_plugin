@@ -43,33 +43,33 @@ const _SHADER_TYPE_HINT_STRING = str(
 
 const _builtin_shaders = {
 	SHADER_CLASSIC4: {
-		path = "res://addons/zylann.hterrain/shaders/simple4.shader",
-		global_path = "res://addons/zylann.hterrain/shaders/simple4_global.shader"
+		path = "res://addons/zylann.hterrain/shaders/simple4.gdshader",
+		global_path = "res://addons/zylann.hterrain/shaders/simple4_global.gdshader"
 	},
 	SHADER_CLASSIC4_LITE: {
-		path = "res://addons/zylann.hterrain/shaders/simple4_lite.shader",
-		global_path = "res://addons/zylann.hterrain/shaders/simple4_global.shader"
+		path = "res://addons/zylann.hterrain/shaders/simple4_lite.gdshader",
+		global_path = "res://addons/zylann.hterrain/shaders/simple4_global.gdshader"
 	},
 	SHADER_LOW_POLY: {
-		path = "res://addons/zylann.hterrain/shaders/low_poly.shader",
+		path = "res://addons/zylann.hterrain/shaders/low_poly.gdshader",
 		global_path = "" # Not supported
 	},
 	SHADER_ARRAY: {
-		path = "res://addons/zylann.hterrain/shaders/array.shader",
-		global_path = "res://addons/zylann.hterrain/shaders/array_global.shader"
+		path = "res://addons/zylann.hterrain/shaders/array.gdshader",
+		global_path = "res://addons/zylann.hterrain/shaders/array_global.gdshader"
 	},
 	SHADER_MULTISPLAT16: {
-		path = "res://addons/zylann.hterrain/shaders/multisplat16.shader",
-		global_path = "res://addons/zylann.hterrain/shaders/multisplat16_global.shader"
+		path = "res://addons/zylann.hterrain/shaders/multisplat16.gdshader",
+		global_path = "res://addons/zylann.hterrain/shaders/multisplat16_global.gdshader"
 	},
 	SHADER_MULTISPLAT16_LITE: {
-		path = "res://addons/zylann.hterrain/shaders/multisplat16_lite.shader",
-		global_path = "res://addons/zylann.hterrain/shaders/multisplat16_global.shader"
+		path = "res://addons/zylann.hterrain/shaders/multisplat16_lite.gdshader",
+		global_path = "res://addons/zylann.hterrain/shaders/multisplat16_global.gdshader"
 	}
 }
 
 const _NORMAL_BAKER_PATH = "res://addons/zylann.hterrain/tools/normalmap_baker.gd"
-const _LOOKDEV_SHADER_PATH = "res://addons/zylann.hterrain/shaders/lookdev.shader"
+const _LOOKDEV_SHADER_PATH = "res://addons/zylann.hterrain/shaders/lookdev.gdshader"
 
 const SHADER_PARAM_INVERSE_TRANSFORM = "u_terrain_inverse_transform"
 const SHADER_PARAM_NORMAL_BASIS = "u_terrain_normal_basis"
@@ -692,7 +692,7 @@ func _on_transform_changed():
 func _enter_tree():
 	_logger.debug("Enter tree")
 
-	if Engine.editor_hint and _normals_baker == null:
+	if Engine.is_editor_hint() and _normals_baker == null:
 		_normals_baker = load(_NORMAL_BAKER_PATH).new()
 		add_child(_normals_baker)
 		_normals_baker.set_terrain_data(_data)
@@ -881,7 +881,7 @@ func set_shader_type(type: String):
 
 	_material_params_need_update = true
 	
-	if Engine.editor_hint:
+	if Engine.is_editor_hint():
 		notify_property_list_changed()
 
 
@@ -917,7 +917,7 @@ func set_custom_shader(shader: Shader):
 		if _shader_type == SHADER_CUSTOM:
 			_material_params_need_update = true
 	
-	if Engine.editor_hint:
+	if Engine.is_editor_hint():
 		notify_property_list_changed()
 
 

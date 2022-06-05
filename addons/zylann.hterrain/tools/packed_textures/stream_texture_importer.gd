@@ -10,8 +10,9 @@ const HT_Util = preload("../../util/util.gd")
 
 const COMPRESS_LOSSLESS = 0
 const COMPRESS_LOSSY = 1
-const COMPRESS_VIDEO_RAM = 2
-const COMPRESS_UNCOMPRESSED = 3
+const COMPRESS_VRAM_COMPRESSED = 2
+const COMPRESS_VRAM_UNCOMPRESSED = 3
+const COMPRESS_BASIS_UNIVERSAL = 5
 
 const COMPRESS_HINT_STRING = "Lossless,Lossy,VRAM,Uncompressed"
 
@@ -20,6 +21,15 @@ const REPEAT_ENABLED = 1
 const REPEAT_MIRRORED = 2
 
 const REPEAT_HINT_STRING = "None,Enabled,Mirrored"
+
+# CompressedTexture2D.FORMAT_VERSION, not exposed to GDScript
+const CompressedTexture2D_FORMAT_VERSION = 1
+
+# CompressedTexture2D.DataFormat, not exposed to GDScript
+const CompressedTexture2D_DATA_FORMAT_IMAGE = 0
+const CompressedTexture2D_DATA_FORMAT_PNG = 1
+const CompressedTexture2D_DATA_FORMAT_WEBP = 2
+const CompressedTexture2D_DATA_FORMAT_BASIS_UNIVERSAL = 3
 
 # StreamTexture.FormatBits, not exposed to GDScript
 const StreamTexture_FORMAT_MASK_IMAGE_FORMAT = (1 << 20) - 1
@@ -30,7 +40,7 @@ const StreamTexture_FORMAT_BIT_HAS_MIPMAPS = 1 << 23
 const StreamTexture_FORMAT_BIT_DETECT_3D = 1 << 24
 const StreamTexture_FORMAT_BIT_DETECT_SRGB = 1 << 25
 const StreamTexture_FORMAT_BIT_DETECT_NORMAL = 1 << 26
-
+const StreamTexture_FORMAT_BIT_DETECT_ROUGHNESS = 1 << 27
 
 static func import(
 	p_source_path: String, 
@@ -64,22 +74,10 @@ static func import(
 	var force_rgbe := false
 	var bptc_ldr := 0
 	var detect_3d := false
+	
+	var p_roughness_channel := 0
 
 	var formats_imported := []
-
-	var tex_flags := 0
-	if repeat > 0:
-		tex_flags |= Texture.FLAG_REPEAT
-	if repeat == 2:
-		tex_flags |= Texture.FLAG_MIRRORED_REPEAT
-	if filter:
-		tex_flags |= Texture.FLAG_FILTER
-	if mipmaps or compress_mode == COMPRESS_VIDEO_RAM:
-		tex_flags |= Texture.FLAG_MIPMAPS
-	if anisotropic:
-		tex_flags |= Texture.FLAG_ANISOTROPIC_FILTER
-	if srgb == 1:
-		tex_flags |= Texture.FLAG_CONVERT_TO_LINEAR
 
 	if size_limit > 0 and (image.get_width() > size_limit or image.get_height() > size_limit):
 		#limit size
@@ -119,7 +117,7 @@ static func import(
 	var detect_normal := normal == 0
 	var force_normal := normal == 1
 
-	if compress_mode == COMPRESS_VIDEO_RAM:
+	if compress_mode == COMPRESS_VRAM_COMPRESSED:
 		#must import in all formats, 
 		#in order of priority (so platform choses the best supported one. IE, etc2 over etc).
 		#Android, GLES 2.x
@@ -128,9 +126,9 @@ static func import(
 		var is_hdr: bool = \
 			(image.get_format() >= Image.FORMAT_RF and image.get_format() <= Image.FORMAT_RGBE9995)
 		var is_ldr: bool = \
-			(image.get_format() >= Image.FORMAT_L8 and image.get_format() <= Image.FORMAT_RGBA5551)
-		var can_bptc : bool = ProjectSettings.get("rendering/vram_compression/import_bptc")
-		var can_s3tc : bool = ProjectSettings.get("rendering/vram_compression/import_s3tc")
+			(image.get_format() >= Image.FORMAT_L8 and image.get_format() <= Image.FORMAT_RGBA4444)
+		var can_bptc : bool = ProjectSettings.get("rendering/textures/vram_compression/import_bptc")
+		var can_s3tc : bool = ProjectSettings.get("rendering/textures/vram_compression/import_s3tc")
 
 		if can_bptc:
 #			return Result.new(false, "{0} cannot handle BPTC compression on {1}, " +
@@ -142,7 +140,7 @@ static func import(
 
 			# Can't do this optimization because not exposed to GDScript				
 #			var channels = image.get_detected_channels()
-#			if is_hdr:
+#			if is_hdr:S
 #				if channels == Image.DETECTED_LA or channels == Image.DETECTED_RGBA:
 #					can_bptc = false
 #			elif is_ldr:
@@ -158,81 +156,75 @@ static func import(
 			image.convert(Image.FORMAT_RGBA8)
 
 		if can_bptc or can_s3tc:
-			_save_stex(
+			_save_ctex(
 				image, 
-				p_save_path + ".s3tc.stex", 
+				p_save_path + ".s3tc.ctex", 
 				compress_mode, 
 				lossy, 
 				Image.COMPRESS_BPTC if can_bptc else Image.COMPRESS_S3TC, 
 				mipmaps, 
-				tex_flags, 
 				stream, 
 				detect_3d, 
 				detect_srgb, 
 				force_rgbe, 
 				detect_normal, 
 				force_normal, 
-				false)
+				false,
+				false,
+				false,
+				-1,
+				null,
+				p_roughness_channel
+				)
 			r_platform_variants.push_back("s3tc")
 			formats_imported.push_back("s3tc")
 			ok_on_pc = true
 
-		if ProjectSettings.get("rendering/vram_compression/import_etc2"):
-			_save_stex(
+		if ProjectSettings.get("rendering/textures/vram_compression/import_etc2"):
+			_save_ctex(
 				image,
-				p_save_path + ".etc2.stex",
+				p_save_path + ".etc2.ctex",
 				compress_mode,
 				lossy,
 				Image.COMPRESS_ETC2,
 				mipmaps,
-				tex_flags,
 				stream,
 				detect_3d,
 				detect_srgb,
 				force_rgbe,
 				detect_normal,
 				force_normal,
-				true)
+				false,
+				true,
+				false,
+				-1,
+				null,
+				p_roughness_channel)
 			r_platform_variants.push_back("etc2")
 			formats_imported.push_back("etc2")
 
-		if ProjectSettings.get("rendering/vram_compression/import_etc"):
-			_save_stex(
+		if ProjectSettings.get("rendering/textures/vram_compression/import_etc"):
+			_save_ctex(
 				image,
-				p_save_path + ".etc.stex",
+				p_save_path + ".etc.ctex",
 				compress_mode,
 				lossy,
 				Image.COMPRESS_ETC,
 				mipmaps,
-				tex_flags,
 				stream,
 				detect_3d,
 				detect_srgb,
 				force_rgbe,
 				detect_normal,
 				force_normal,
-				true)
+				false,
+				true,
+				false,
+				-1,
+				null,
+				p_roughness_channel)
 			r_platform_variants.push_back("etc")
 			formats_imported.push_back("etc")
-
-		if ProjectSettings.get("rendering/vram_compression/import_pvrtc"):
-			_save_stex(
-				image,
-				p_save_path + ".pvrtc.stex",
-				compress_mode,
-				lossy,
-				Image.COMPRESS_PVRTC4,
-				mipmaps,
-				tex_flags,
-				stream,
-				detect_3d,
-				detect_srgb,
-				force_rgbe,
-				detect_normal,
-				force_normal,
-				true)
-			r_platform_variants.push_back("pvrtc")
-			formats_imported.push_back("pvrtc")
 
 		if not ok_on_pc:
 			# TODO This warning is normally printed by `EditorNode::add_io_error`,
@@ -244,21 +236,25 @@ static func import(
 	
 	else:
 		#import normally
-		_save_stex(
+		_save_ctex(
 			image,
-			p_save_path + ".stex",
+			p_save_path + ".ctex",
 			compress_mode,
 			lossy, 
 			Image.COMPRESS_S3TC, #this is ignored,
 			mipmaps,
-			tex_flags,
 			stream,
 			detect_3d,
 			detect_srgb,
 			force_rgbe,
 			detect_normal,
 			force_normal,
-			false)
+			false,
+			false,
+			false,
+			-1,
+			null,
+			p_roughness_channel)
 	
 	# TODO I have no idea what this part means, but it's not exposed to the script API either.
 #	if (r_metadata) {
@@ -273,21 +269,25 @@ static func import(
 	return HT_Result.new(true).with_value(OK)
 
 
-static func _save_stex(
+static func _save_ctex(
 	p_image: Image, 
 	p_fpath: String, 
 	p_compress_mode: int, # ResourceImporterTexture.CompressMode
 	p_lossy_quality: float,
 	p_vram_compression: int, # Image.CompressMode
 	p_mipmaps: bool, 
-	p_texture_flags: int,
 	p_streamable: bool, 
 	p_detect_3d: bool,
 	p_detect_srgb: bool,
 	p_force_rgbe: bool, 
 	p_detect_normal: bool,
 	p_force_normal: bool,
-	p_force_po2_for_compressed: bool
+	p_srgb_friendly: bool,
+	p_force_po2_for_compressed: bool,
+	p_detect_roughness: bool,
+	p_limit_mipmap: int,
+	p_normal,
+	p_roughness_channel: int # Image.RoughnessChannel
 	) -> HT_Result:
 
 	# Need to work on a copy because we will modify it,
@@ -301,121 +301,169 @@ static func _save_stex(
 			.format([p_fpath, HT_Errors.get_message(err)]))
 
 	f.store_8('G'.unicode_at(0))
-	f.store_8('D'.unicode_at(0))
 	f.store_8('S'.unicode_at(0))
 	f.store_8('T'.unicode_at(0)) # godot streamable texture
+	f.store_8('2'.unicode_at(0))
 
-	var resize_to_po2 := false
-	
-	if p_compress_mode == COMPRESS_VIDEO_RAM and p_force_po2_for_compressed \
-	and (p_mipmaps or p_texture_flags & Texture.FLAG_REPEAT):
-		resize_to_po2 = true
-		f.store_16(HT_Util.next_power_of_two(p_image.get_width()))
-		f.store_16(p_image.get_width())
-		f.store_16(HT_Util.next_power_of_two(p_image.get_height()))
-		f.store_16(p_image.get_height())
-	else:
-		f.store_16(p_image.get_width())
-		f.store_16(0)
-		f.store_16(p_image.get_height())
-		f.store_16(0)
-	
-	f.store_32(p_texture_flags)
+	# var resize_to_po2 := false
+	# 
+	# if p_compress_mode == COMPRESS_VIDEO_RAM and p_force_po2_for_compressed \
+	# and (p_mipmaps or p_texture_flags & Texture.FLAG_REPEAT):
+	# 	resize_to_po2 = true
+	# 	f.store_16(HT_Util.next_power_of_two(p_image.get_width()))
+	# 	f.store_16(p_image.get_width())
+	# 	f.store_16(HT_Util.next_power_of_two(p_image.get_height()))
+	# 	f.store_16(p_image.get_height())
+	# else:
+	# 	f.store_16(p_image.get_width())
+	# 	f.store_16(0)
+	# 	f.store_16(p_image.get_height())
+	# 	f.store_16(0)
+	# 
+	# f.store_32(p_texture_flags)
 
-	var format := 0
+	#format version
+	f.store_32(CompressedTexture2D_FORMAT_VERSION)
+	#texture may be resized later, so original size must be saved first
+	f.store_32(p_image.get_width())
+	f.store_32(p_image.get_height())
+
+	var flags := 0
 
 	if p_streamable:
-		format |= StreamTexture_FORMAT_BIT_STREAM
+		flags |= StreamTexture_FORMAT_BIT_STREAM
 	if p_mipmaps:
-		format |= StreamTexture_FORMAT_BIT_HAS_MIPMAPS # mipmaps bit
+		flags |= StreamTexture_FORMAT_BIT_HAS_MIPMAPS # mipmaps bit
 	if p_detect_3d:
-		format |= StreamTexture_FORMAT_BIT_DETECT_3D
+		flags |= StreamTexture_FORMAT_BIT_DETECT_3D
 	if p_detect_srgb:
-		format |= StreamTexture_FORMAT_BIT_DETECT_SRGB
+		flags |= StreamTexture_FORMAT_BIT_DETECT_SRGB
+	if p_detect_roughness:
+		flags |= StreamTexture_FORMAT_BIT_DETECT_ROUGHNESS
 	if p_detect_normal:
-		format |= StreamTexture_FORMAT_BIT_DETECT_NORMAL
+		flags |= StreamTexture_FORMAT_BIT_DETECT_NORMAL
+
+	f.store_32(flags);
+	f.store_32(p_limit_mipmap);
+	#reserved for future use
+	f.store_32(0);
+	f.store_32(0);
+	f.store_32(0);
 
 	if (p_compress_mode == COMPRESS_LOSSLESS or p_compress_mode == COMPRESS_LOSSY) \
 	and p_image.get_format() > Image.FORMAT_RGBA8:
-		p_compress_mode = COMPRESS_UNCOMPRESSED # these can't go as lossy
+		p_compress_mode = COMPRESS_VRAM_UNCOMPRESSED # these can't go as lossy
+
+	if ((p_compress_mode == COMPRESS_BASIS_UNIVERSAL) \
+	or (p_compress_mode == COMPRESS_VRAM_COMPRESSED \
+	and p_force_po2_for_compressed)) and p_mipmaps:
+		p_image.resize_to_po2()
+
+	if p_mipmaps and (not p_image.has_mipmaps() or p_force_normal):
+		p_image.generate_mipmaps(p_force_normal)
+
+	if not p_mipmaps:
+		p_image.clear_mipmaps()
+
+	# RMV if p_image.has_mipmaps():
+	# RMV 	p_image.generate_mipmap_roughness(p_roughness_channel, p_normal)
+
+	var csource = Image.COMPRESS_SOURCE_GENERIC
+	if p_force_normal:
+		csource = Image.COMPRESS_SOURCE_NORMAL
+	elif p_srgb_friendly:
+		csource = Image.COMPRESS_SOURCE_SRGB
+
+	var used_channels = p_image.detect_used_channels(csource)
+
+	return save_to_ctex_format(f, p_image, p_compress_mode, used_channels, p_vram_compression, p_lossy_quality)
+
+static func save_to_ctex_format(
+	f: File, 
+	p_image: Image, 
+	p_compress_mode: int, # ResourceImporterTexture.CompressMode
+	p_channels: int, # Image::UsedChannels,
+	p_compress_format: int, # Image::CompressMode,
+	p_lossy_quality: float,
+	) -> HT_Result:
+
+	var mmc
 
 	match p_compress_mode:
 		COMPRESS_LOSSLESS:
-			# Not required for our use case
-#			var image : Image = p_image.duplicate()
-#			if p_mipmaps:
-#				image.generate_mipmaps()
-#			else:
-#				image.clear_mipmaps()
-			var image := p_image
-			
-			var mmc := _get_required_mipmap_count(image)
-
-			format |= StreamTexture_FORMAT_BIT_LOSSLESS
-			f.store_32(format)
+			var lossless_force_png: bool = false
+			lossless_force_png = ProjectSettings.get_setting("rendering/textures/lossless_compression/force_png") # or \
+				# not Image._webp_mem_loader_func # not sure how we can check this from GDScript
+			var use_webp: bool = lossless_force_png and p_image.get_width() <= 16383 && p_image.get_height() <= 16383 # WebP has a size limit
+			f.store_32(CompressedTexture2D.DATA_FORMAT_WEBP if use_webp else CompressedTexture2D.DATA_FORMAT_PNG)
+			f.store_16(p_image.get_width())
+			f.store_16(p_image.get_height())
 			f.store_32(mmc)
+			f.store_32(p_image.get_format())
 
+			mmc = _get_required_mipmap_count(p_image)
 			for i in mmc:
-				if i > 0:
-					image.shrink_x2()
-				#var data = Image::lossless_packer(image);
-				# This is actually PNG...
-				var data = image.save_png_to_buffer()
-				f.store_32(data.size() + 4)
-				f.store_8('P'.unicode_at(0))
-				f.store_8('N'.unicode_at(0))
-				f.store_8('G'.unicode_at(0))
-				f.store_8(' '.unicode_at(0))
-				f.store_buffer(data)
+				var data
+				if use_webp:
+					return HT_Result.new(false, "WebP not implemented")
+					# data = Image.webp_lossless_packer(p_image.get_image_from_mipmap(i))
+					# f.store_32(data.size() + 4)
+					# f.store_buffer(data)
+				else:
+					data = p_image.save_png_to_buffer()
+					f.store_32(data.size() + 4)
+					f.store_8('P'.unicode_at(0))
+					f.store_8('N'.unicode_at(0))
+					f.store_8('G'.unicode_at(0))
+					f.store_8(' '.unicode_at(0))
+					f.store_buffer(data)
 
 		COMPRESS_LOSSY:
 			return HT_Result.new(false,
 				"Saving a StreamTexture with lossy compression cannot be achieved by scripts.\n"
 				+ "Godot would need to either allow to save an image as WEBP to a buffer,\n"
-				+ "or expose `ResourceImporterTexture::_save_stex` so custom importers\n"
+				+ "or expose `ResourceImporterTexture::_save_ctex` so custom importers\n"
 				+ "would be easier to make.")
 
-		COMPRESS_VIDEO_RAM:
+		COMPRESS_VRAM_COMPRESSED:
 			var image : Image = p_image.duplicate()
-			if resize_to_po2:
-				image.resize_to_po2()
+			image.compress_from_channels(p_compress_format, p_channels, p_lossy_quality)
+
+			mmc = _get_required_mipmap_count(image)
+			f.store_32(CompressedTexture2D_DATA_FORMAT_IMAGE)
+			f.store_16(image.get_width())
+			f.store_16(image.get_height())
+			f.store_32(mmc)
+			f.store_32(image.get_format())
 			
-			if p_mipmaps:
-				image.generate_mipmaps(p_force_normal)
-
-			if p_force_rgbe \
-			and image.get_format() >= Image.FORMAT_R8 \
-			and image.get_format() <= Image.FORMAT_RGBE9995:
-				image.convert(Image.FORMAT_RGBE9995)
-			else:
-				var csource := Image.COMPRESS_SOURCE_GENERIC
-				if p_force_normal:
-					csource = Image.COMPRESS_SOURCE_NORMAL
-				elif p_texture_flags & RenderingServer.TEXTURE_FLAG_CONVERT_TO_LINEAR:
-					csource = Image.COMPRESS_SOURCE_SRGB
-
-				image.compress(p_vram_compression, csource, p_lossy_quality)
-
-			format |= image.get_format()
-
-			f.store_32(format)
-
 			var data = image.get_data();
 			f.store_buffer(data)
 		
-		COMPRESS_UNCOMPRESSED:
+		COMPRESS_VRAM_UNCOMPRESSED:
+			mmc = _get_required_mipmap_count(p_image)
+			f.store_32(CompressedTexture2D_DATA_FORMAT_IMAGE)
+			f.store_16(p_image.get_width())
+			f.store_16(p_image.get_height())
+			f.store_32(mmc)
+			f.store_32(p_image.get_format())
 
-			var image := p_image.duplicate()
-			if p_mipmaps:
-				image.generate_mipmaps()
-			else:
-				image.clear_mipmaps()
-
-			format |= image.get_format()
-			f.store_32(format)
-
-			var data = image.get_data()
+			var data = p_image.get_data()
 			f.store_buffer(data)
+
+		COMPRESS_BASIS_UNIVERSAL:
+			return HT_Result.new(false, "Basis Universal not implemented")
+			# f.store_32(CompressedTexture2D.DATA_FORMAT_BASIS_UNIVERSAL)
+			# f.store_16(p_image.get_width())
+			# f.store_16(p_image.get_height())
+			# f.store_32(p_image.get_mipmap_count())
+			# f.store_32(p_image.get_format())
+
+			# var mmc := _get_required_mipmap_count(p_image)
+			# for i in mmc:
+				# var data := Image.basis_universal_packer(p_image.get_image_from_mipmap(i), p_channels)
+				# f.store_32(data.size())
+
+				# f.store_buffer(data)
 
 		_:
 			return HT_Result.new(false, "Invalid compress mode specified: {0}" \

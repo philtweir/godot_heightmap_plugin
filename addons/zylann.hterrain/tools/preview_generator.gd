@@ -8,16 +8,16 @@ const HT_Logger = preload("../util/logger.gd")
 var _logger = HT_Logger.get_for(self)
 
 
-func generate(res: Resource, size: Vector2) -> Texture:
+func _generate(res: Resource, size: Vector2i) -> Texture2D:
 	if res == null or not (res is HTerrainData):
 		return null
 	var normalmap = res.get_image(HTerrainData.CHANNEL_NORMAL)
 	if normalmap == null:
 		return null
-	return _generate(normalmap, size)
+	return generate(normalmap, size)
 
 
-func generate_from_path(path: String, size: Vector2) -> Texture:
+func _generate_from_path(path: String, size: Vector2i) -> Texture2D:
 	if not path.ends_with("." + HTerrainData.META_EXTENSION):
 		return null
 	var data_dir := path.get_base_dir()
@@ -29,19 +29,19 @@ func generate_from_path(path: String, size: Vector2) -> Texture:
 		_logger.error("Could not load '{0}', error {1}" \
 			.format([normals_path, HT_Errors.get_message(err)]))
 		return null
-	return _generate(normals, size)
+	return generate(normals, size)
 
 
 func _handles(type: String) -> bool:
 	return type == "Resource"
 
 
-func _generate(normals: Resource, size: Vector2i) -> Texture2D:
+func generate(normals: Image, size: Vector2i) -> Texture2D:
 	var im := Image.new()
 	im.create(size.x, size.y, false, Image.FORMAT_RGB8)
 
-	im.lock()
-	normals.lock()
+	# RMV im.lock()
+	# RMV normals.lock()
 
 	var light_dir = Vector3(-1, -0.5, -1).normalized()
 
@@ -61,8 +61,8 @@ func _generate(normals: Resource, size: Vector2i) -> Texture2D:
 
 			im.set_pixel(x, y, col)
 
-	im.unlock();
-	normals.unlock();
+	# RMV im.unlock();
+	# RMV normals.unlock();
 
 	var tex = ImageTexture.new()
 	tex.create_from_image(im)

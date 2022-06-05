@@ -145,7 +145,7 @@ static func is_in_edited_scene(node: Node) -> bool:
 	var edited_scene = node.get_tree().edited_scene_root
 	if node == edited_scene:
 		return true
-	return edited_scene != null and edited_scene.is_a_parent_of(node)
+	return edited_scene != null and edited_scene.is_ancestor_of(node)
 
 
 # Get an extended or cropped version of an image,
@@ -520,7 +520,7 @@ static func get_pixel_clamped(im: Image, x: int, y: int) -> Color:
 
 
 static func update_configuration_warning(node: Node, recursive: bool):
-	if not Engine.editor_hint:
+	if not Engine.is_editor_hint():
 		return
 	# Godot 3.1 and older doesn't have this function
 	if node.has_method("update_configuration_warning"):

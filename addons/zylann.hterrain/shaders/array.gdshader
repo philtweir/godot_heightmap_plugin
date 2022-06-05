@@ -82,7 +82,7 @@ void vertex() {
 	// Need to use u_terrain_normal_basis to handle scaling.
 	NORMAL = u_terrain_normal_basis * unpack_normal(texture(u_terrain_normalmap, UV));
 
-	v_distance_to_camera = distance(wpos.xyz, CAMERA_MATRIX[3].xyz);
+	v_distance_to_camera = distance(wpos.xyz, INV_VIEW_MATRIX[3].xyz);
 }
 
 void fragment() {

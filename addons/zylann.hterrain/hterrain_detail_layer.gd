@@ -22,7 +22,7 @@ const DEFAULT_MESH_PATH = "res://addons/zylann.hterrain/models/grass_quad.obj"
 var HTerrain = load("res://addons/zylann.hterrain/hterrain.gd")
 
 const CHUNK_SIZE = 32
-const DEFAULT_SHADER_PATH = "res://addons/zylann.hterrain/shaders/detail.shader"
+const DEFAULT_SHADER_PATH = "res://addons/zylann.hterrain/shaders/detail.gdshader"
 const DEBUG = false
 
 # These parameters are considered built-in,
@@ -92,7 +92,7 @@ const _API_SHADER_PARAMS = {
 		else:
 			_material.shader = custom_shader
 
-			if Engine.editor_hint:
+			if Engine.is_editor_hint():
 				# Ability to fork default shader
 				if shader.code == "":
 					shader.code = _default_shader.code
@@ -148,7 +148,7 @@ var _multimesh: MultiMesh
 var _multimesh_need_regen = true
 var _multimesh_instance_pool := []
 var _ambient_wind_time := 0.0
-#var _auto_pick_index_on_enter_tree := Engine.editor_hint
+#var _auto_pick_index_on_enter_tree := Engine.is_editor_hint()
 var _debug_wirecube_mesh: Mesh = null
 var _debug_cubes := []
 var _logger := HT_Logger.get_for(self)
@@ -161,13 +161,14 @@ func _init():
 	
 	_multimesh = MultiMesh.new()
 	_multimesh.transform_format = MultiMesh.TRANSFORM_3D
-	_multimesh.color_format = MultiMesh.COLOR_8BIT
+	_multimesh.use_colors = true
+	# RMV (this seems not to be on multimesh any more) _multimesh.color_format = MultiMesh.COLOR_8BIT
 
 
 func _enter_tree():
 	var terrain = _get_terrain()
 	if terrain != null:
-		terrain.connect("transform_changed", self, "_on_terrain_transform_changed")
+		terrain.connect("transform_changed", self._on_terrain_transform_changed)
 
 		#if _auto_pick_index_on_enter_tree:
 		#	_auto_pick_index_on_enter_tree = false
@@ -181,7 +182,7 @@ func _enter_tree():
 func _exit_tree():
 	var terrain = _get_terrain()
 	if terrain != null:
-		terrain.disconnect("transform_changed", self, "_on_terrain_transform_changed")
+		terrain.disconnect("transform_changed", self._on_terrain_transform_changed)
 		terrain._internal_remove_detail_layer(self)
 	_update_material()
 	for k in _chunks.keys():

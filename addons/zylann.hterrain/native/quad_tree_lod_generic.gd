@@ -32,9 +32,9 @@ var _max_depth : int = 0
 var _base_size : int = 16
 var _split_scale : float = 2.0
 
-var _make_func : Callable = null
-var _recycle_func : Callable = null
-var _vertical_bounds_func : Callable = null
+var _make_func : Callable
+var _recycle_func : Callable
+var _vertical_bounds_func : Callable
 
 
 func set_callbacks(make_cb: Callable, recycle_cb: Callable, vbounds_cb: Callable):

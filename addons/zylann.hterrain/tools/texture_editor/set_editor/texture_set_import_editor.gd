@@ -740,11 +740,11 @@ func _generate_packed_textures_files_data(import_dir: String, prefix: String) ->
 	var importer_compress_mode := 0
 	match _import_settings.compression:
 		COMPRESS_VRAM:
-			importer_compress_mode = HT_StreamTextureImporter.COMPRESS_VIDEO_RAM
+			importer_compress_mode = HT_StreamTextureImporter.COMPRESS_VRAM_COMPRESSED
 		COMPRESS_LOSSLESS:
 			importer_compress_mode = HT_StreamTextureImporter.COMPRESS_LOSSLESS
 		COMPRESS_RAW:
-			importer_compress_mode = HT_StreamTextureImporter.COMPRESS_UNCOMPRESSED
+			importer_compress_mode = HT_StreamTextureImporter.COMPRESS_VRAM_UNCOMPRESSED
 		_:
 			return HT_Result.new(false, "Unknown compress mode {0}, might be a bug" \
 				.format([_import_settings.compression]))
